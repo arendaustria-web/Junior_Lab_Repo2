@@ -96,6 +96,32 @@ function plotYearlyFracturePoints( ...
     yearsToPlot = ["2023","2024","2025","2026"];
     testName    = string(testName);
 
+    %% Composition percentages
+    apPercentages = [50, 40, 60, 70];
+    epoxyPercentages = 100 - apPercentages;
+
+
+    %% Identify which material comparison is being plotted
+
+    materialNames = upper(string(materials));
+
+    if numel(materialNames) == 1
+
+        if materialNames == "NEAT"
+            plotGroup = "AP_Epoxy";
+
+        elseif materialNames == "CNT"
+            plotGroup = "AP_CNT_Epoxy";
+
+        else
+            plotGroup = "Other";
+        end
+
+    else
+        plotGroup = "Combined";
+    end
+
+
     %% Cutoff value defaults to the plot limit for this test
     if isempty(maxFailureX)
 
@@ -115,6 +141,11 @@ function plotYearlyFracturePoints( ...
 
         yearNumber     = yearsToPlot(y);
         yearFolderName = yearNumber + "_organized";
+        
+compositionLabel = ...
+    string(apPercentages(y)) + "% AP " + ...
+    string(epoxyPercentages(y)) + "% Epoxy";
+
 
         %% Does the failure cutoff apply to this year?
         applyCutoff = ~isempty(cutoffYears) && ...
@@ -619,6 +650,7 @@ end
                 fitHandle = plot(ax, fitX, fitY, ...
                     'Color', thisColor, ...
                     'LineWidth', 3.0);
+                legendHandles(end+1) = fitHandle;
 
                 if strcmpi(testName,'Compression')
 
@@ -823,7 +855,7 @@ if linearAnythingPlotted
 
     linearSaveName = ...
     yearNumber + "_" + testName + ...
-    "_Mean_Curve.png";
+    "_" + plotGroup + "_Mean_Curve.png";
 
     linearSavePath = fullfile( ...
         outputFolder, linearSaveName);
@@ -868,7 +900,9 @@ end
             ylabel(ax,'Stress (MPa)','FontWeight','bold','FontSize',20);
         end
 
-        title(ax, yearNumber + " " + testName, 'Interpreter','none');
+        title(ax, ...
+        compositionLabel + " - " + testName + " Failure Analysis", ...
+        'Interpreter','none');
 
         %% subtitleText must be a STRING, not a char array. Adding two
         %% char arrays with + performs numeric addition of character
@@ -907,7 +941,9 @@ end
         dcm = datacursormode(fig);
         set(dcm,'Enable','on','UpdateFcn',@showCSV);
 
-        saveName = yearNumber + "_" + testName + "_Failure_Analysis.png";
+        saveName = ...
+    yearNumber + "_" + testName + ...
+    "_" + plotGroup + "_Failure_Analysis.png";
         savePath = fullfile(outputFolder, saveName);
 
         exportgraphics(fig, savePath, 'Resolution',300);
