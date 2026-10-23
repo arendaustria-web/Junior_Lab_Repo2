@@ -7,9 +7,10 @@
 %%     the detected failure point is solid; data recorded after failure is
 %%     drawn as a dotted tail.
 %%   - Each specimen's failure point is marked.
-%%   - The average curve is a POLYNOMIAL BEST FIT (default order 2) through
-%%     the pooled pre-failure data of every retained specimen. It runs from
-%%     the start of the data out to the mean failure strain.
+%%   %%   - For Tension and Fracture, the average curve is linearized through
+%%     the origin and the mean failure point.
+%%   - For Compression, the average curve is a polynomial best fit
+%%     through the pooled pre-failure data.
 %%   - The average failure point sits exactly ON that fitted curve, at the
 %%     intersection of the curve and the vertical failure line.
 %%
@@ -349,6 +350,13 @@ function plotYearlyFracturePoints( ...
 %%   (meanFailureX, meanFailureY)
 %% ========================================================
 
+%% ============================================================
+%% STEP 4 — average curve
+%%
+%% Tension + Fracture -> linearized
+%% Compression        -> polynomial best fit
+%% ============================================================
+
 preX = cell(numberKept,1);
 preY = cell(numberKept,1);
 
@@ -357,15 +365,52 @@ for c = 1:numberKept
     preY{c} = keptFullY{c}(1:keptFailIndex(c));
 end
 
-%% Straight-line slope through origin and mean failure point
-linearSlope = meanFailureY / meanFailureX;
 
-%% Generate straight line from origin to mean failure point
-fitX = linspace(0, meanFailureX, numberOfGridPoints)';
-fitY = linearSlope .* fitX;
+%% ------------------------------------------------------------
+%% TENSION AND FRACTURE — LINEARIZED
+%% ------------------------------------------------------------
 
-%% The end of the line is exactly the average fracture point
-curveFailureY = meanFailureY;
+if strcmpi(testName,'Tension') || strcmpi(testName,'Fracture')
+
+    linearSlope = meanFailureY / meanFailureX;
+
+    fitX = linspace(0, meanFailureX, numberOfGridPoints)';
+    fitY = linearSlope .* fitX;
+
+    curveFailureY = meanFailureY;
+
+
+%% ------------------------------------------------------------
+%% COMPRESSION — POLYNOMIAL BEST FIT
+%% ------------------------------------------------------------
+
+else
+
+    % Combine all retained pre-failure data
+    pooledX = vertcat(preX{:});
+    pooledY = vertcat(preY{:});
+
+    good = isfinite(pooledX) & isfinite(pooledY);
+
+    pooledX = pooledX(good);
+    pooledY = pooledY(good);
+
+    % Polynomial fit
+    polynomialCoefficients = polyfit( ...
+        pooledX, pooledY, polynomialOrder);
+
+    fitX = linspace( ...
+        min(pooledX), ...
+        meanFailureX, ...
+        numberOfGridPoints)';
+
+    fitY = polyval(polynomialCoefficients, fitX);
+
+    % Stress on fitted curve at mean peak strain
+    curveFailureY = polyval( ...
+        polynomialCoefficients, meanFailureX);
+
+end
 %% ============================================================
 %% Add to linearized-mean-only figure
 %% ============================================================
@@ -378,13 +423,22 @@ linearHandle = plot( ...
     'LineWidth',3.0);
 
 linearLegendHandles(end+1) = linearHandle;
-linearLegendLabels(end+1) = materialName + ...
-    string(sprintf(' linearized mean (n = %d)', numberKept));
+if strcmpi(testName,'Compression')
+
+    linearLegendLabels(end+1) = materialName + ...
+        string(sprintf(' polynomial mean (n = %d)', numberKept));
+
+else
+
+    linearLegendLabels(end+1) = materialName + ...
+        string(sprintf(' linearized mean (n = %d)', numberKept));
+
+end
 
 % Dashed vertical failure line
 plot(linearAx, ...
     [meanFailureX meanFailureX], ...
-    [0 meanFailureY], ...
+    [0 curveFailureY], ...
     'Color', thisColor, ...
     'LineStyle','--', ...
     'LineWidth',2.2, ...
@@ -394,7 +448,7 @@ plot(linearAx, ...
 % Vertical = force SD
 % Horizontal = displacement SD
 errorbar(linearAx, ...
-    meanFailureX, meanFailureY, ...
+    meanFailureX, curveFailureY, ...
     stdFailureY, stdFailureY, ...
     stdFailureX, stdFailureX, ...
     'o', ...
@@ -407,29 +461,7 @@ errorbar(linearAx, ...
     'HandleVisibility','off');
 
 linearAnythingPlotted = true;
-%% ------------------------------------------------
-%% Mean fracture point and vertical dashed line
-%% ------------------------------------------------
 
-% Vertical dashed line from fracture point to x-axis
-plot(linearAx, ...
-    [meanFailureX meanFailureX], ...
-    [0 meanFailureY], ...
-    'Color', thisColor, ...
-    'LineStyle','--', ...
-    'LineWidth',2.2, ...
-    'HandleVisibility','off');
-
-% Mean fracture point
-plot(linearAx, ...
-    meanFailureX, meanFailureY, ...
-    'o', ...
-    'Color', thisColor, ...
-    'MarkerFaceColor', thisColor, ...
-    'MarkerEdgeColor','k', ...
-    'MarkerSize',13, ...
-    'LineWidth',2.4, ...
-    'HandleVisibility','off');
 
 %% Calculate R^2 of the linearized line against pooled data
 pooledX = vertcat(preX{:});
@@ -440,7 +472,11 @@ pooledValid = isfinite(pooledX) & isfinite(pooledY);
 pooledX = pooledX(pooledValid);
 pooledY = pooledY(pooledValid);
 
-predictedPooled = linearSlope .* pooledX;
+if strcmpi(testName,'Compression')
+    predictedPooled = polyval(polynomialCoefficients, pooledX);
+else
+    predictedPooled = linearSlope .* pooledX;
+end
 
 residualSS = sum((pooledY - predictedPooled).^2);
 totalSS = sum((pooledY - mean(pooledY)).^2);
@@ -451,10 +487,21 @@ else
     rSquared = NaN;
 end
 
-fprintf(['  %s: linearized slope = %.4g, R^2 = %.4f | ' ...
-         'mean failure point = (%.4g, %.4g)\n'], ...
-    materialName, linearSlope, rSquared, ...
-    meanFailureX, meanFailureY);
+if strcmpi(testName,'Compression')
+
+    fprintf(['  %s: polynomial order = %d, R^2 = %.4f | ' ...
+             'mean failure point = (%.4g, %.4g)\n'], ...
+        materialName, polynomialOrder, rSquared, ...
+        meanFailureX, meanFailureY);
+
+else
+
+    fprintf(['  %s: linearized slope = %.4g, R^2 = %.4f | ' ...
+             'mean failure point = (%.4g, %.4g)\n'], ...
+        materialName, linearSlope, rSquared, ...
+        meanFailureX, meanFailureY);
+
+end
 
 subtitlePieces(end+1) = materialName + ...
     string(sprintf(' R^2=%.3f', rSquared)); %#ok<AGROW>
@@ -521,41 +568,7 @@ if numberOfPoints >= 3 && ~isempty(fitYSpread)
     linearLegendLabels(end+1) = ...
         materialName + " mean \pm SD (force)";
 end
-%% ============================================================
-%% Horizontal + vertical SD along linearized mean curve
-%% ============================================================
 
-numberOfPoints = numel(fitX);
-
-if numberOfPoints >= 3 && ~isempty(fitYSpread)
-
-    barIndex = round(linspace( ...
-        1, numberOfPoints, numberOfErrorBars + 2));
-
-    % Skip origin and final fracture point.
-    % Final point gets its own full +/- SD marker.
-    barIndex = unique(barIndex(2:end-1));
-
-    barX = fitX(barIndex);
-    barY = fitY(barIndex);
-
-    % Vertical SD
-    barSY = fitYSpread(barIndex);
-
-    barSY(~isfinite(barSY)) = 0;
-
-   errorbar(linearAx, ...
-    barX, barY, ...
-    min(barSY,barY), barSY, ...
-    'o', ...
-        'Color',thisColor, ...
-        'MarkerFaceColor',thisColor, ...
-        'MarkerEdgeColor','k', ...
-        'MarkerSize',6, ...
-        'LineWidth',1.4, ...
-        'CapSize',8, ...
-        'HandleVisibility','off');
-end
             %% ========================================================
             %% STEP 5 — draw, back to front
             %% ========================================================
@@ -607,8 +620,17 @@ end
                     'Color', thisColor, ...
                     'LineWidth', 3.0);
 
-                legendLabels(end+1) = materialName + ...
-                string(sprintf(' linearized mean (n = %d)', numberKept));                   %#ok<AGROW>
+                if strcmpi(testName,'Compression')
+
+    legendLabels(end+1) = materialName + ...
+        string(sprintf(' polynomial mean (n = %d)', numberKept));
+
+else
+
+    legendLabels(end+1) = materialName + ...
+        string(sprintf(' linearized mean (n = %d)', numberKept));
+
+end                 %#ok<AGROW>
 
                 anythingPlotted = true;
 
@@ -786,9 +808,8 @@ if linearAnythingPlotted
     end
 
     title(linearAx, ...
-        yearNumber + " " + testName + ...
-        " Linearized Mean", ...
-        'Interpreter','none');
+    yearNumber + " " + testName + " Mean Curve", ...
+    'Interpreter','none');
 
     legend( ...
         linearAx, ...
@@ -801,8 +822,8 @@ if linearAnythingPlotted
     axis(linearAx,'tight');
 
     linearSaveName = ...
-        yearNumber + "_" + testName + ...
-        "_Linearized_Mean.png";
+    yearNumber + "_" + testName + ...
+    "_Mean_Curve.png";
 
     linearSavePath = fullfile( ...
         outputFolder, linearSaveName);
@@ -852,9 +873,19 @@ end
         %% subtitleText must be a STRING, not a char array. Adding two
         %% char arrays with + performs numeric addition of character
         %% codes and errors on any length mismatch.
-        subtitleText = string(sprintf( ...
+        if strcmpi(testName,'Compression')
+
+    subtitleText = string(sprintf( ...
+        'Polynomial mean curve | outliers: %s', ...
+        outlierMethod));
+
+else
+
+    subtitleText = string(sprintf( ...
         'Linearized mean through average failure point | outliers: %s', ...
-     outlierMethod));
+        outlierMethod));
+
+end
 
         if applyCutoff
             subtitleText = subtitleText + ...
