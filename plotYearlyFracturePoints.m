@@ -1,11 +1,10 @@
 %% ========================================================================
 %% plotYearlyFracturePoints
 %%
-%% One figure per year. For each material:
+%% One figure per test/material view, overlaying four yearly compositions:
 %% 
-%%   - Every specimen is plotted over its FULL response. The portion up to
-%%     the detected failure point is solid; data recorded after failure is
-%%     drawn as a dotted tail.
+%%   - The full experimental mean is plotted, including post-peak fall.
+%%   - A shaded band shows mean +/- 1 standard deviation.
 %%   - Each specimen's failure point is marked.
 %%   %%   - For Tension and Fracture, the average curve is linearized through
 %%     the origin and the mean failure point.
@@ -18,7 +17,7 @@
 %%   - Along the average curve : vertical bars only (stress SD)
 %%   - Along the failure line  : horizontal bars only (strain SD)
 %%   - At the intersection     : both directions
-%%
+%% 
 %% Every year is plotted. The failure cutoff, which discards specimens that
 %% have not failed by MaxFailureX, is applied ONLY to the years listed in
 %% CutoffYears (2026 by default). Any figure that had the cutoff applied
@@ -72,9 +71,9 @@ function plotYearlyFracturePoints( ...
     addParameter(parser,'MaxFailureX',[]);
 
     %% Independent display toggles
-    addParameter(parser,'ShowSpecimenCurves',true);
-    addParameter(parser,'ShowPostFailure',true);
-    addParameter(parser,'ShowFailurePoints',true);
+    addParameter(parser,'ShowSpecimenCurves',false);
+    addParameter(parser,'ShowPostFailure',false);
+    addParameter(parser,'ShowFailurePoints',false);
 
     parse(parser,varargin{:});
 
@@ -302,17 +301,15 @@ compositionLabel = ...
             %% ========================================================
 
             if numel(failureX) >= 3
-
                 if strcmpi(outlierMethod,'grubbs')
-                    [~, isOutlier] = rmoutliers( ...
+                    [~, outlierMask] = rmoutliers( ...
                         [failureX, failureY], outlierMethod, 1);
                 else
-                    [~, isOutlier] = rmoutliers( ...
+                    [~, outlierMask] = rmoutliers( ...
                         [failureX, failureY], outlierMethod, 1, ...
                         'ThresholdFactor', outlierThreshold);
                 end
-
-                isOutlier = isOutlier(:);
+                isOutlier = any(outlierMask, 2);
             else
                 isOutlier = false(numel(failureX),1);
             end
@@ -360,317 +357,91 @@ compositionLabel = ...
                 stdFailureY = 0;
             end
 
-     %% ========================================================
-%% STEP 4 — linearized average through mean failure point
-%%
-%% The linearized average is constrained to pass through:
-%%   (0,0)
-%% and the mean failure point:
-%%   (meanFailureX, meanFailureY)
-%% ========================================================
-
-%% ============================================================
-%% STEP 4 — average curve
-%%
-%% Tension + Fracture -> linearized
-%% Compression        -> polynomial best fit
-%% ============================================================
-
-preX = cell(numberKept,1);
-preY = cell(numberKept,1);
-
-for c = 1:numberKept
-    preX{c} = keptFullX{c}(1:keptFailIndex(c));
-    preY{c} = keptFullY{c}(1:keptFailIndex(c));
-end
-
-
-%% ------------------------------------------------------------
-%% TENSION AND FRACTURE — LINEARIZED
-%% ------------------------------------------------------------
-
-if strcmpi(testName,'Tension') || strcmpi(testName,'Fracture')
-
-    linearSlope = meanFailureY / meanFailureX;
-
-    fitX = linspace(0, meanFailureX, numberOfGridPoints)';
-    fitY = linearSlope .* fitX;
-
-    curveFailureY = meanFailureY;
-
-
-%% ------------------------------------------------------------
-%% COMPRESSION — POLYNOMIAL BEST FIT
-%% ------------------------------------------------------------
-
-else
-
-    % Combine all retained pre-failure data
-    pooledX = vertcat(preX{:});
-    pooledY = vertcat(preY{:});
-
-    good = isfinite(pooledX) & isfinite(pooledY);
-
-    pooledX = pooledX(good);
-    pooledY = pooledY(good);
-
-    % Polynomial fit
-    polynomialCoefficients = polyfit( ...
-        pooledX, pooledY, polynomialOrder);
-
-    fitX = linspace( ...
-        min(pooledX), ...
-        meanFailureX, ...
-        numberOfGridPoints)';
-
-    fitY = polyval(polynomialCoefficients, fitX);
-
-    % Stress on fitted curve at mean peak strain
-    curveFailureY = polyval( ...
-        polynomialCoefficients, meanFailureX);
-
-end
-%% Calculate R^2 of the linearized line against pooled data
-pooledX = vertcat(preX{:});
-pooledY = vertcat(preY{:});
-
-pooledValid = isfinite(pooledX) & isfinite(pooledY);
-
-pooledX = pooledX(pooledValid);
-pooledY = pooledY(pooledValid);
-
-if strcmpi(testName,'Compression')
-    predictedPooled = polyval(polynomialCoefficients, pooledX);
-else
-    predictedPooled = linearSlope .* pooledX;
-end
-
-residualSS = sum((pooledY - predictedPooled).^2);
-totalSS = sum((pooledY - mean(pooledY)).^2);
-
-if totalSS > 0
-    rSquared = 1 - residualSS / totalSS;
-else
-    rSquared = NaN;
-end
-
-if strcmpi(testName,'Compression')
-
-    fprintf(['  %s: polynomial order = %d, R^2 = %.4f | ' ...
-             'mean failure point = (%.4g, %.4g)\n'], ...
-        materialName, polynomialOrder, rSquared, ...
-        meanFailureX, meanFailureY);
-
-else
-
-    fprintf(['  %s: linearized slope = %.4g, R^2 = %.4f | ' ...
-             'mean failure point = (%.4g, %.4g)\n'], ...
-        materialName, linearSlope, rSquared, ...
-        meanFailureX, meanFailureY);
-
-end
-
-% R-squared is printed to the Command Window for each series.
-
-%% ------------------------------------------------
-%% Stress spread about the linearized curve
-%% ------------------------------------------------
-
-stackedY = NaN(numberOfGridPoints, numberKept);
-
-for c = 1:numberKept
-
-    [xClean, yClean] = makeMonotonic(preX{c}, preY{c});
-
-    if numel(xClean) < 2
-        continue;
-    end
-
-    stackedY(:,c) = interp1( ...
-        xClean, yClean, fitX, 'linear', NaN);
-end
-
-fitCount = sum(isfinite(stackedY),2);
-
-fitYSpread = std(stackedY, 0, 2, 'omitnan');
-fitYSpread(fitCount < minimumContributors) = NaN;
-
-fitYSpread = smoothSpread(fitYSpread, smoothingSpan);
-
-fitYSpread(~isfinite(fitYSpread)) = 0;
-fitYSpread(fitYSpread < 0) = 0;
             %% ========================================================
-            %% STEP 5 — draw, back to front
+            %% STEP 4 — full experimental mean, including post-peak fall
             %% ========================================================
+            % Interpolate the retained FULL specimen responses at common x.
+            % A specimen contributes only within its measured x-range.
+            curveEnds = NaN(numberKept,1);
+            cleanedX = cell(numberKept,1);
+            cleanedY = cell(numberKept,1);
+            for c = 1:numberKept
+                [cleanedX{c}, cleanedY{c}] = makeMonotonic( ...
+                    keptFullX{c}, keptFullY{c});
+                if numel(cleanedX{c}) >= 2
+                    curveEnds(c) = max(cleanedX{c});
+                end
+            end
 
-            %% ---- 5a. Individual specimens, pre and post failure -----
-            %% The two portions are toggled independently.
+            if ~any(isfinite(curveEnds))
+                warning('No valid full curves for %s %s %s.', ...
+                    yearNumber, materialName, testName);
+                continue;
+            end
+
+            fitX = linspace(0, max(curveEnds), numberOfGridPoints)';
+            stackedY = NaN(numberOfGridPoints, numberKept);
 
             for c = 1:numberKept
-
-                cutAt = keptFailIndex(c);
-
-                if showSpecimenCurves
-
-                    hPre = plot(ax, ...
-                        keptFullX{c}(1:cutAt), ...
-                        keptFullY{c}(1:cutAt), ...
-                        'Color', thisColor, ...
-                        'LineWidth', 1.0, ...
-                        'HandleVisibility','off');
-
-                    hPre.Color(4) = 0.22;
-                    hPre.UserData = keptPaths(c);
-
-                    anythingPlotted = true;
+                if numel(cleanedX{c}) < 2
+                    continue;
                 end
-
-                if showPostFailure && cutAt < numel(keptFullX{c})
-
-                    hPost = plot(ax, ...
-                        keptFullX{c}(cutAt:end), ...
-                        keptFullY{c}(cutAt:end), ...
-                        'Color', thisColor, ...
-                        'LineStyle',':', ...
-                        'LineWidth', 1.0, ...
-                        'HandleVisibility','off');
-
-                    hPost.Color(4) = 0.30;
-                    hPost.UserData = keptPaths(c);
-
-                    tailWasPlotted = true;
-                    anythingPlotted = true;
-                end
+                stackedY(:,c) = interp1( ...
+                    cleanedX{c}, cleanedY{c}, fitX, 'linear', NaN);
             end
 
-            %% ---- 5b. Linearized average curve -----------------------
-            if ~isempty(fitX)
+            fitCount = sum(isfinite(stackedY),2);
+            fitY = mean(stackedY, 2, 'omitnan');
+            fitYSpread = std(stackedY, 0, 2, 'omitnan');
+
+            % Require at least two contributing specimens for both mean
+            % and standard deviation, avoiding misleading one-sample tails.
+            fitY(fitCount < minimumContributors) = NaN;
+            fitYSpread(fitCount < minimumContributors) = NaN;
+            fitYSpread = smoothSpread(fitYSpread, smoothingSpan);
+
+            %% ========================================================
+            %% STEP 5 — mean curve and shaded +/- 1 SD (no error bars)
+            %% ========================================================
+            valid = isfinite(fitX) & isfinite(fitY) & ...
+                    isfinite(fitYSpread);
+            if any(valid)
+                % Preserve gaps where the contributor count is insufficient.
+                % The fill is restricted to each contiguous valid run.
+                edges = diff([false; valid; false]);
+                runStarts = find(edges == 1);
+                runEnds = find(edges == -1) - 1;
+
+                for r = 1:numel(runStarts)
+                    idx = runStarts(r):runEnds(r);
+                    if numel(idx) < 2
+                        continue;
+                    end
+                    shadeX = fitX(idx);
+                    shadeY = fitY(idx);
+                    shadeSD = fitYSpread(idx);
+                    upperBound = shadeY + shadeSD;
+                    lowerBound = max(shadeY - shadeSD, 0);
+
+                    fill(ax, [shadeX; flipud(shadeX)], ...
+                        [upperBound; flipud(lowerBound)], thisColor, ...
+                        'FaceAlpha',0.15, 'EdgeColor','none', ...
+                        'HandleVisibility','off');
+                end
 
                 fitHandle = plot(ax, fitX, fitY, ...
-                    'Color', thisColor, ...
-                    'LineWidth', 3.0, ...
-                    'LineStyle', meanLineStyle);
+                    'Color',thisColor, 'LineWidth',3.0, ...
+                    'LineStyle',meanLineStyle);
                 legendHandles(end+1) = fitHandle;
-
-                if strcmpi(testName,'Compression')
-
-    legendLabels(end+1) = seriesLabel + ...
-        string(sprintf(' polynomial mean (n = %d)', numberKept));
-
-else
-
-    legendLabels(end+1) = seriesLabel + ...
-        string(sprintf(' linearized mean (n = %d)', numberKept));
-
-end                 %#ok<AGROW>
-
+                legendLabels(end+1) = seriesLabel + ...
+                    string(sprintf(' full mean (n = %d)', numberKept));
                 anythingPlotted = true;
-
-                %% ---- 5c. VERTICAL bars only, along the fit ----------
-                numberOfPoints = numel(fitX);
-
-                if numberOfPoints >= 3 && ~isempty(fitYSpread)
-
-                    barIndex = round(linspace(1, numberOfPoints, ...
-                        numberOfErrorBars + 2));
-
-                    % Skip both ends: the origin, and the failure point
-                    % which gets its own two-directional marker below
-                    barIndex = unique(barIndex(2:end-1));
-
-                    barX  = fitX(barIndex);
-                    barY  = fitY(barIndex);
-                    barSY = fitYSpread(barIndex);
-
-                    barSY(~isfinite(barSY)) = 0;
-
-                    barHandle = errorbar(ax, ...
-                        barX, barY, ...
-                        min(barSY, barY), barSY, ...
-                        'LineStyle','none', ...
-                        'Marker','none', ...
-                        'Color', thisColor, ...
-                        'LineWidth', 1.4, ...
-                        'CapSize', 8);
-
-                    barHandle.HandleVisibility = 'off';
-                end
             end
 
-            %% ---- 5d. Failure line, HORIZONTAL bars only -------------
-            if isfinite(curveFailureY)
-                lineTop = curveFailureY;
-            else
-                lineTop = meanFailureY;
-            end
-
-            plot(ax, ...
-                [meanFailureX meanFailureX], ...
-                [lineTop 0], ...
-                'Color', thisColor, ...
-                'LineStyle','--', ...
-                'LineWidth', 2.2, ...
-                'HandleVisibility','off');
-            anythingPlotted = true;
-
-            if stdFailureX > 0 && numberOfFailureBars >= 1
-
-                barHeights = linspace(0, lineTop, numberOfFailureBars + 2)';
-
-                % Skip the ends: y = 0, and the intersection point
-                barHeights = barHeights(2:end-1);
-
-                failureBarHandle = errorbar(ax, ...
-                    repmat(meanFailureX, numel(barHeights), 1), ...
-                    barHeights, ...
-                    repmat(stdFailureX, numel(barHeights), 1), ...
-                    repmat(stdFailureX, numel(barHeights), 1), ...
-                    'horizontal', ...
-                    'LineStyle','none', ...
-                    'Marker','none', ...
-                    'Color', thisColor, ...
-                    'LineWidth', 1.4, ...
-                    'CapSize', 8);
-
-                failureBarHandle.HandleVisibility = 'off';
-            end
-
-            %% ---- 5e. Individual failure points ----------------------
-            if showFailurePoints
-
-                scatterHandle = scatter(ax, ...
-                    keptFailureX, keptFailureY, 45, ...
-                    thisColor, 'filled', ...
-                    'MarkerEdgeColor','k', ...
-                    'MarkerFaceAlpha',0.75);
-
-                scatterHandle.HandleVisibility = 'off';
-            end
-
-            %% ---- 5f. Intersection point, BOTH directions ------------
-            %% Placed on the fitted curve at the mean failure strain,
-            %% which is exactly where the curve meets the failure line.
-
-            intersectY = lineTop;
-
-            errorbar(ax, ...
-                meanFailureX, intersectY, ...
-                min(stdFailureY, intersectY), stdFailureY, ...
-                stdFailureX, stdFailureX, ...
-                'o', ...
-                'Color', thisColor, ...
-                'MarkerFaceColor', thisColor, ...
-                'MarkerEdgeColor','k', ...
-                'MarkerSize',13, ...
-                'LineWidth',2.4, ...
-                'CapSize',13, ...
-                'HandleVisibility','off');
-
-            fprintf(['  %s: n = %d, failure strain = %.4g (SD %.4g), ' ...
-                     'failure stress on curve = %.4g (SD %.4g)\n'], ...
-                materialName, numberKept, ...
-                meanFailureX, stdFailureX, ...
-                intersectY, stdFailureY);
+            fprintf(['  %s: n = %d, mean peak x = %.4g (SD %.4g), ' ...
+                     'mean peak y = %.4g (SD %.4g)\n'], ...
+                materialName, numberKept, meanFailureX, stdFailureX, ...
+                meanFailureY, stdFailureY);
         end
     end  % all four compositions processed
 
@@ -706,24 +477,7 @@ end                 %#ok<AGROW>
         testName + " - " + replace(plotGroup,"_","/") + " - All Compositions", ...
         'Interpreter','none');
 
-        %% subtitleText must be a STRING, not a char array. Adding two
-        %% char arrays with + performs numeric addition of character
-        %% codes and errors on any length mismatch.
-        if strcmpi(testName,'Compression')
-
-    subtitleText = string(sprintf( ...
-        'Polynomial mean curve | outliers: %s', ...
-        outlierMethod));
-
-else
-
-    subtitleText = string(sprintf( ...
-        'Linearized mean through average failure point | outliers: %s', ...
-        outlierMethod));
-
-end
-
-
+        subtitleText = "Full experimental mean with shaded +/- 1 SD";
 
         subtitle(ax, subtitleText, 'Interpreter','none');
 
