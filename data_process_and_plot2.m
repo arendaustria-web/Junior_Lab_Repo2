@@ -93,11 +93,8 @@ failurePlotFolder = fullfile(organizedFolder,'Yearly_Failure_Analysis');
 if ~isfolder(failurePlotFolder)
     mkdir(failurePlotFolder);
 end
-
 %% ============================================================
-
-%% ============================================================
-%% Yearly Failure Analysis - Three Material Comparisons
+%% Yearly Failure Analysis
 %% ============================================================
 
 materialViews = {
@@ -107,7 +104,6 @@ materialViews = {
 };
 
 for t = 1:length(tests)
-
     for v = 1:length(materialViews)
 
         plotYearlyFracturePoints( ...
@@ -120,6 +116,7 @@ for t = 1:length(tests)
 
     end
 end
+
 
 %{
 %% Plot each organized year

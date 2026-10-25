@@ -137,6 +137,24 @@ function plotYearlyFracturePoints( ...
     numberOfGridPoints  = 400;   % resolution of the fitted curve
     minimumContributors = 2;     % specimens required to report an SD
 
+        fig = figure( ...
+            'Visible','on', ...
+            'Units','normalized', ...
+            'Position',[0.10 0.10 0.75 0.75]);
+
+        ax = axes(fig);
+
+        hold(ax,'on');
+        grid(ax,'on');
+        box(ax,'on');
+
+        legendHandles = gobjects(0);
+        legendLabels  = strings(0);
+
+        anythingPlotted = false;
+        tailWasPlotted  = false;
+        subtitlePieces  = strings(0);
+
     for y = 1:length(yearsToPlot)
 
         yearNumber     = yearsToPlot(y);
@@ -182,52 +200,22 @@ compositionLabel = ...
             end
         end
 
-        fig = figure( ...
-            'Visible','on', ...
-            'Units','normalized', ...
-            'Position',[0.10 0.10 0.75 0.75]);
-
-        ax = axes(fig);
-
-        hold(ax,'on');
-        grid(ax,'on');
-        box(ax,'on');
-
-        legendHandles = gobjects(0);
-        legendLabels  = strings(0);
-
-        anythingPlotted = false;
-        tailWasPlotted  = false;
-        subtitlePieces  = strings(0);
-        %% ------------------------------------------------------------
-        %% Separate figure — linearized mean curves only
-        %% ------------------------------------------------------------
-        linearFig = figure( ...
-            'Visible','on', ...
-            'Units','normalized', ...
-            'Position',[0.10 0.10 0.75 0.75]);
-
-        linearAx = axes(linearFig);
-
-        hold(linearAx,'on');
-        grid(linearAx,'on');
-        box(linearAx,'on');
-
-        linearLegendHandles = gobjects(0);
-        linearLegendLabels  = strings(0);
-        linearAnythingPlotted = false;
-
         for m = 1:length(materials)
 
             materialName = string(materials{m});
 
+            % Distinguish composition by color and CNT by line style.
+            compositionColors = [0.00 0.45 0.74; 0.85 0.33 0.10; ...
+                                 0.47 0.67 0.19; 0.49 0.18 0.56];
+            thisColor = compositionColors(y,:);
             if strcmpi(materialName,'CNT')
-                thisColor = [0.85 0.20 0.15];
-            elseif strcmpi(materialName,'NEAT')
-                thisColor = [0.15 0.35 0.85];
+                meanLineStyle = '--';
+                materialLabel = "AP/CNT/Epoxy";
             else
-                thisColor = [0.35 0.35 0.35];
+                meanLineStyle = '-';
+                materialLabel = "AP/Epoxy";
             end
+            seriesLabel = compositionLabel + " - " + materialLabel;
 
             rows = ...
                 strcmpi(string(classifiedAll.Year), yearFolderName) & ...
@@ -442,58 +430,6 @@ else
         polynomialCoefficients, meanFailureX);
 
 end
-%% ============================================================
-%% Add to linearized-mean-only figure
-%% ============================================================
-
-% Mean linearized curve
-linearHandle = plot( ...
-    linearAx, ...
-    fitX, fitY, ...
-    'Color', thisColor, ...
-    'LineWidth',3.0);
-
-linearLegendHandles(end+1) = linearHandle;
-if strcmpi(testName,'Compression')
-
-    linearLegendLabels(end+1) = materialName + ...
-        string(sprintf(' polynomial mean (n = %d)', numberKept));
-
-else
-
-    linearLegendLabels(end+1) = materialName + ...
-        string(sprintf(' linearized mean (n = %d)', numberKept));
-
-end
-
-% Dashed vertical failure line
-plot(linearAx, ...
-    [meanFailureX meanFailureX], ...
-    [0 curveFailureY], ...
-    'Color', thisColor, ...
-    'LineStyle','--', ...
-    'LineWidth',2.2, ...
-    'HandleVisibility','off');
-
-% Mean fracture point with +/- 1 standard deviation
-% Vertical = force SD
-% Horizontal = displacement SD
-errorbar(linearAx, ...
-    meanFailureX, curveFailureY, ...
-    stdFailureY, stdFailureY, ...
-    stdFailureX, stdFailureX, ...
-    'o', ...
-    'Color', thisColor, ...
-    'MarkerFaceColor', thisColor, ...
-    'MarkerEdgeColor','k', ...
-    'MarkerSize',13, ...
-    'LineWidth',2.4, ...
-    'CapSize',13, ...
-    'HandleVisibility','off');
-
-linearAnythingPlotted = true;
-
-
 %% Calculate R^2 of the linearized line against pooled data
 pooledX = vertcat(preX{:});
 pooledY = vertcat(preY{:});
@@ -534,8 +470,7 @@ else
 
 end
 
-subtitlePieces(end+1) = materialName + ...
-    string(sprintf(' R^2=%.3f', rSquared)); %#ok<AGROW>
+% R-squared is printed to the Command Window for each series.
 
 %% ------------------------------------------------
 %% Stress spread about the linearized curve
@@ -564,42 +499,6 @@ fitYSpread = smoothSpread(fitYSpread, smoothingSpan);
 
 fitYSpread(~isfinite(fitYSpread)) = 0;
 fitYSpread(fitYSpread < 0) = 0;
-%% ============================================================
-%% Add +/- SD along the linearized-mean-only curve
-%% ============================================================
-
-numberOfPoints = numel(fitX);
-
-if numberOfPoints >= 3 && ~isempty(fitYSpread)
-
-    % Same locations used on the detailed fracture graph
-    barIndex = round(linspace( ...
-        1, numberOfPoints, numberOfErrorBars + 2));
-
-    % Skip origin and final fracture point
-    % Final fracture point gets its own +/- SD marker
-    barIndex = unique(barIndex(2:end-1));
-
-    barX  = fitX(barIndex);
-    barY  = fitY(barIndex);
-    barSY = fitYSpread(barIndex);
-
-    barSY(~isfinite(barSY)) = 0;
-
-    linearSDHandle = errorbar(linearAx, ...
-        barX, barY, ...
-        min(barSY,barY), barSY, ...
-        'LineStyle','none', ...
-        'Marker','none', ...
-        'Color',thisColor, ...
-        'LineWidth',1.4, ...
-        'CapSize',8);
-
-    linearLegendHandles(end+1) = linearSDHandle;
-    linearLegendLabels(end+1) = ...
-        materialName + " mean \pm SD (force)";
-end
-
             %% ========================================================
             %% STEP 5 — draw, back to front
             %% ========================================================
@@ -649,17 +548,18 @@ end
 
                 fitHandle = plot(ax, fitX, fitY, ...
                     'Color', thisColor, ...
-                    'LineWidth', 3.0);
+                    'LineWidth', 3.0, ...
+                    'LineStyle', meanLineStyle);
                 legendHandles(end+1) = fitHandle;
 
                 if strcmpi(testName,'Compression')
 
-    legendLabels(end+1) = materialName + ...
+    legendLabels(end+1) = seriesLabel + ...
         string(sprintf(' polynomial mean (n = %d)', numberKept));
 
 else
 
-    legendLabels(end+1) = materialName + ...
+    legendLabels(end+1) = seriesLabel + ...
         string(sprintf(' linearized mean (n = %d)', numberKept));
 
 end                 %#ok<AGROW>
@@ -693,9 +593,7 @@ end                 %#ok<AGROW>
                         'LineWidth', 1.4, ...
                         'CapSize', 8);
 
-                    legendHandles(end+1) = barHandle;                    %#ok<AGROW>
-                    legendLabels(end+1)  = materialName + ...
-                        " fit \pm SD (stress)";                          %#ok<AGROW>
+                    barHandle.HandleVisibility = 'off';
                 end
             end
 
@@ -713,35 +611,6 @@ end                 %#ok<AGROW>
                 'LineStyle','--', ...
                 'LineWidth', 2.2, ...
                 'HandleVisibility','off');
-            %% Horizontal +/- SD bars along vertical fracture line
-
-            % Locations down the vertical fracture line
-            failureBarY = linspace( ...
-                0, meanFailureY, numberOfErrorBars + 2);
-
-            % Do not put an SD bar at the origin or fracture point
-            failureBarY = failureBarY(2:end-1);
-
-            % Horizontal SD grows from zero at the bottom
-            % to stdFailureX at the mean fracture point
-            failureBarXSD = stdFailureX .* ...
-                (failureBarY ./ meanFailureY);
-
-            % Plot horizontal SD bars along vertical fracture line
-            errorbar(linearAx, ...
-                meanFailureX .* ones(size(failureBarY)), ...
-                failureBarY, ...
-                zeros(size(failureBarY)), ...
-                zeros(size(failureBarY)), ...
-                failureBarXSD, ...
-                failureBarXSD, ...
-                'LineStyle','none', ...
-                'Marker','none', ...
-                'Color',thisColor, ...
-                'LineWidth',1.4, ...
-                'CapSize',8, ...
-                'HandleVisibility','off');
-
             anythingPlotted = true;
 
             if stdFailureX > 0 && numberOfFailureBars >= 1
@@ -763,9 +632,7 @@ end                 %#ok<AGROW>
                     'LineWidth', 1.4, ...
                     'CapSize', 8);
 
-                legendHandles(end+1) = failureBarHandle;                 %#ok<AGROW>
-                legendLabels(end+1)  = materialName + ...
-                    " failure \pm SD (strain)";                          %#ok<AGROW>
+                failureBarHandle.HandleVisibility = 'off';
             end
 
             %% ---- 5e. Individual failure points ----------------------
@@ -777,8 +644,7 @@ end                 %#ok<AGROW>
                     'MarkerEdgeColor','k', ...
                     'MarkerFaceAlpha',0.75);
 
-                legendHandles(end+1) = scatterHandle;                    %#ok<AGROW>
-                legendLabels(end+1)  = materialName + " failure points"; %#ok<AGROW>
+                scatterHandle.HandleVisibility = 'off';
             end
 
             %% ---- 5f. Intersection point, BOTH directions ------------
@@ -806,79 +672,16 @@ end                 %#ok<AGROW>
                 meanFailureX, stdFailureX, ...
                 intersectY, stdFailureY);
         end
-       %% ============================================================
-%% Finish linearized-mean-only figure
-%% Same formatting as the fracture analysis figure
-%% ============================================================
-
-if linearAnythingPlotted
-
-    set(linearAx, ...
-        'FontSize',18, ...
-        'FontWeight','bold');
-
-    if strcmpi(testName,'Fracture')
-        xlabel(linearAx, ...
-            'Displacement (mm)', ...
-            'FontWeight','bold', ...
-            'FontSize',20);
-
-        ylabel(linearAx, ...
-            'Force (N)', ...
-            'FontWeight','bold', ...
-            'FontSize',20);
-    else
-        xlabel(linearAx, ...
-            'Strain', ...
-            'FontWeight','bold', ...
-            'FontSize',20);
-
-        ylabel(linearAx, ...
-            'Stress (MPa)', ...
-            'FontWeight','bold', ...
-            'FontSize',20);
-    end
-
-    title(linearAx, ...
-    yearNumber + " " + testName + " Mean Curve", ...
-    'Interpreter','none');
-
-    legend( ...
-        linearAx, ...
-        linearLegendHandles, ...
-        cellstr(linearLegendLabels), ...
-        'Location','northwest', ...
-        'Interpreter','tex', ...
-        'FontSize',10);
-
-    axis(linearAx,'tight');
-
-    linearSaveName = ...
-    yearNumber + "_" + testName + ...
-    "_" + plotGroup + "_Mean_Curve.png";
-
-    linearSavePath = fullfile( ...
-        outputFolder, linearSaveName);
-
-    exportgraphics( ...
-        linearFig, ...
-        linearSavePath, ...
-        'Resolution',300);
-
-    fprintf('Saved: %s\n', linearSavePath);
-
-else
-    close(linearFig);
-end
+    end  % all four compositions processed
 
         %% ------------------------------------------------------------
         %% Finish the figure
         %% ------------------------------------------------------------
 
         if ~anythingPlotted
-            warning('Nothing plotted for %s %s.', yearNumber, testName);
+            warning('Nothing plotted for %s %s.', testName, plotGroup);
             close(fig);
-            continue;
+            return;
         end
 
         if tailWasPlotted
@@ -886,8 +689,7 @@ end
                 'Color',[0.45 0.45 0.45], ...
                 'LineStyle',':','LineWidth',1.4);
 
-            legendHandles(end+1) = tailDummy;
-            legendLabels(end+1)  = "Post-failure data";
+            tailDummy.HandleVisibility = 'off';
         end
 
         set(ax,'FontSize',18,'FontWeight','bold');
@@ -901,7 +703,7 @@ end
         end
 
         title(ax, ...
-        compositionLabel + " - " + testName + " Failure Analysis", ...
+        testName + " - " + replace(plotGroup,"_","/") + " - All Compositions", ...
         'Interpreter','none');
 
         %% subtitleText must be a STRING, not a char array. Adding two
@@ -921,20 +723,12 @@ else
 
 end
 
-        if applyCutoff
-            subtitleText = subtitleText + ...
-                string(sprintf(' | failure cutoff %.4g', maxFailureX));
-        end
 
-        if ~isempty(subtitlePieces)
-            subtitleText = subtitleText + " | " + ...
-                strjoin(subtitlePieces, ", ");
-        end
 
         subtitle(ax, subtitleText, 'Interpreter','none');
 
         legend(ax, legendHandles, cellstr(legendLabels), ...
-            'Location','northwest','Interpreter','tex','FontSize',10);
+            'Location','bestoutside','Interpreter','none','FontSize',10);
 
         axis(ax,'tight');
 
@@ -942,14 +736,14 @@ end
         set(dcm,'Enable','on','UpdateFcn',@showCSV);
 
         saveName = ...
-    yearNumber + "_" + testName + ...
+    "All_Compositions_" + testName + ...
     "_" + plotGroup + "_Failure_Analysis.png";
+        if ~isfolder(outputFolder), mkdir(outputFolder); end
         savePath = fullfile(outputFolder, saveName);
 
         exportgraphics(fig, savePath, 'Resolution',300);
 
         fprintf('Saved: %s\n', savePath);
-    end
 end
 
 %% ========================================================================
