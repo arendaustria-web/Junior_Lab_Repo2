@@ -57,7 +57,7 @@ fitSettings.minRSquared = 0.995;
 %% Flag specimens whose fit differs from Bluehill by more than this
 bluehillTolerance = 0.25;
 
-outputFolder = fullfile(organizedFolder, 'Compression_Modulus_Results');
+outputFolder = fullfile(repoFolder, 'Compression_Modulus_Export');
 
 if ~isfolder(outputFolder)
     mkdir(outputFolder);

@@ -41,7 +41,7 @@ import pandas as pd
 
 ORGANIZED_FOLDER = "OrganizedData"
 RAW_DATA_FOLDER = "juniorlabdata"
-OUTPUT_FOLDER = os.path.join(ORGANIZED_FOLDER, "Compression_Modulus_Results")
+OUTPUT_FOLDER = "Compression_Modulus_Export"
 
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday"]
 MATERIALS = ["CNT", "NEAT"]
