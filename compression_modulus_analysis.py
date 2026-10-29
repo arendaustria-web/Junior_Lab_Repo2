@@ -208,6 +208,9 @@ def load_compression_dimensions(year):
             table = table.rename(columns={table.columns[1]: "Material"})
         table["Material"] = table["Material"].astype(str).str.strip().str.upper()
         table["Test"] = table["Test"].astype(str).str.strip().str.upper()
+        # Some sections are stored as text with a leading zero (e.g. '033016')
+        for column in ["Section", "Sample", "Diameter_mm", "Length_mm"]:
+            table[column] = pd.to_numeric(table[column], errors="coerce")
         sheets[sheet] = table[table["Test"] == "COMPRESSION"]
 
     return sheets

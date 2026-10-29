@@ -445,6 +445,15 @@ function sheets = loadCompressionDimensions(organizedFolder, yearNumber)
         dims.Material = upper(strtrim(string(dims.Material)));
         dims.Test = upper(strtrim(string(dims.Test)));
 
+        %% Some sections are stored as text with a leading zero (e.g. '033016')
+        numericColumns = {'Section','Sample','Diameter_mm','Length_mm'};
+        for c = 1:numel(numericColumns)
+            column = dims.(numericColumns{c});
+            if ~isnumeric(column)
+                dims.(numericColumns{c}) = str2double(string(column));
+            end
+        end
+
         sheets.(char(matlab.lang.makeValidName(sheetNames(s)))) = ...
             dims(dims.Test == "COMPRESSION",:);
     end
