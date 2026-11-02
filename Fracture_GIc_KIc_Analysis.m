@@ -43,7 +43,7 @@ plotLimits.fracture = 3.5;   % displacement in mm, same crop used for plotting
 %%   "ratio_year" -> 50/50 with the source year underneath
 xTickLabelStyle = "ap";
 
-outputFolder = fullfile(organizedFolder, 'Fracture_GIc_KIc_Results');
+outputFolder = fullfile(repoFolder, 'Fracture_GIc_KIc_Export');
 
 if ~isfolder(outputFolder)
     mkdir(outputFolder);
