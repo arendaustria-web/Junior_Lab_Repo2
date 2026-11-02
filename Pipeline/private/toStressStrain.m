@@ -1,0 +1,63 @@
+function c = toStressStrain(displacement, force, dim)
+%TOSTRESSSTRAIN Turn one displacement-force record into a stress-strain curve.
+%
+%   Steps (same physics as the old data_process_and_plot2.m):
+%     1. drop NaN/Inf points
+%     2. zero the displacement at the first sample
+%     3. stress = F / A  (N/mm^2 = MPa),  strain = delta / L
+%     4. drop negative-strain points, keep data up to the peak stress
+%        (for tension this is the fracture point, so the old 90 %-drop crop
+%        is no longer needed)
+%
+%   The plot strain window is NOT applied here. It is a plotting option, so
+%   changing it does not require re-running prepareData.
+%
+%   Returns a struct with Displacement_mm, Force_N, Strain, Stress_MPa
+%   (column vectors), PeakStress_MPa, StrainAtPeak and Status.
+
+c = struct('Displacement_mm', zeros(0,1), 'Force_N', zeros(0,1), ...
+           'Strain', zeros(0,1), 'Stress_MPa', zeros(0,1), ...
+           'PeakStress_MPa', NaN, 'StrainAtPeak', NaN, 'Status', "ok");
+
+displacement = displacement(:);
+force = force(:);
+
+valid = isfinite(displacement) & isfinite(force);
+displacement = displacement(valid);
+force = force(valid);
+
+if isempty(force)
+    c.Status = "no numeric data";
+    return;
+end
+
+if ~(isfinite(dim.Area_mm2) && isfinite(dim.Length_mm))
+    c.Status = "no dimensions";
+    return;
+end
+
+displacement = displacement - displacement(1);
+
+stress = force ./ dim.Area_mm2;
+strain = displacement ./ dim.Length_mm;
+
+keep = strain >= 0;
+displacement = displacement(keep);
+force  = force(keep);
+strain = strain(keep);
+stress = stress(keep);
+
+if isempty(stress)
+    c.Status = "empty after processing";
+    return;
+end
+
+[peak, iPeak] = max(stress);
+
+c.Displacement_mm = displacement(1:iPeak);
+c.Force_N         = force(1:iPeak);
+c.Strain          = strain(1:iPeak);
+c.Stress_MPa      = stress(1:iPeak);
+c.PeakStress_MPa  = peak;
+c.StrainAtPeak    = strain(iPeak);
+end
