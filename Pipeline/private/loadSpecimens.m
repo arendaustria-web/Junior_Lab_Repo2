@@ -9,12 +9,20 @@ function [specimens, curves] = loadSpecimens(processedFile, testName, includeDup
 %               Force_N, Strain, Stress_MPa)
 %
 %   Rows flagged as copies of another specimen (DuplicateOf) are dropped
-%   unless includeDuplicates is true.
+%   unless includeDuplicates is true. Specimens listed in
+%   excludedSpecimens.m are always dropped.
 
 if ~isfile(processedFile)
     error('plot:noProcessedFile', ...
         ['Processed workbook not found:\n  %s\n' ...
          'Run prepareData() first.'], processedFile);
+end
+
+if ~ismember(string(testName), sheetnames(processedFile))
+    error('plot:noTestSheet', ...
+        ['%s has no "%s" sheet. It was made by an older prepareData;\n' ...
+         'run prepareData() again (runAnalysis does this when rebuildProcessedData = true).'], ...
+        processedFile, testName);
 end
 
 specimens = readtable(processedFile, 'Sheet', 'Specimens', 'TextType', 'string');
@@ -31,10 +39,30 @@ if ismember('DuplicateOf', specimens.Properties.VariableNames) && ~includeDuplic
     keep = keep & ~isDup;
 end
 
+% Specimens listed in excludedSpecimens.m (bad tests the user has ruled out)
+excluded = excludedSpecimens();
+nExcluded = 0;
+if ~isempty(excluded)
+    normPath = @(p) lower(replace(strtrim(string(p)), "/", "\"));
+    allPaths = normPath(specimens.FilePath);
+    listed   = normPath(excluded(:, 1));
+    isExcluded = ismember(allPaths, listed);
+    nExcluded = sum(keep & isExcluded);
+    keep = keep & ~isExcluded;
+    notFound = excluded(~ismember(listed, allPaths), 1);
+    for k = 1:numel(notFound)
+        warning('plot:excludedNotFound', ...
+            'excludedSpecimens.m lists a path that is not in the workbook:\n  %s', notFound(k));
+    end
+end
+
 specimens = specimens(keep, :);
 if nDuplicates > 0
     fprintf('%s: skipping %d duplicate CSVs (set IncludeDuplicates=true to use them)\n', ...
         testName, nDuplicates);
+end
+if nExcluded > 0
+    fprintf('%s: leaving out %d specimens listed in excludedSpecimens.m\n', testName, nExcluded);
 end
 
 % AP loading always comes from apRatio.m, so editing that file is enough

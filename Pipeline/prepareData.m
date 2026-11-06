@@ -5,7 +5,7 @@ function processedFile = prepareData(opts)
 %   processedFile = prepareData(Name=Value)
 %
 %   Walks OrganizedData/<year>_organized/<batch>/<day>/<group>/ and, for every
-%   tension and compression CSV:
+%   tension, compression and fracture (compact-tension) CSV:
 %     - labels it CNT or NEAT: from the filename when the group's names are
 %       unambiguous (cnt / epoxy), otherwise highest max force in the group
 %       folder = CNT (the old classifyFileListByMaxForce rule)
@@ -13,7 +13,12 @@ function processedFile = prepareData(opts)
 %       the organizer has copied the same test into several folders
 %     - looks up its dimensions in SpecimenDimensions<year>.xlsx, using the
 %       sheet that matches the batch folder (batch1 / batch2)
-%     - converts it to a stress-strain curve up to peak stress
+%     - converts it to a stress-strain curve (tension up to fracture,
+%       compression up to the end of the test), or for fracture to a
+%       toe-compensated force-displacement curve up to peak load
+%       (private/toForceDisplacement.m)
+%     - keeps compact-tension (fracture) files out of tension, including
+%       those with "Tension" in their name
 %
 %   Output workbook (default <repo>/ProcessedData/JuniorLab_ProcessedData.xlsx)
 %     Specimens    one row per CSV: year and AP loading (private/apRatio.m),
@@ -22,16 +27,20 @@ function processedFile = prepareData(opts)
 %                  ("ok" rows are the ones that get plotted)
 %     Tension      SpecimenID, Displacement_mm, Force_N, Strain, Stress_MPa
 %     Compression  same columns
+%     Fracture     SpecimenID, Displacement_mm, Force_N
 %     Settings     options used and when the file was made
 %
 %   Options
 %     OrganizedFolder  folder holding the <year>_organized folders
 %                      (default <repo>/OrganizedData)
 %     OutputFile       workbook to write (default above)
-%     Tests            tests to process (default ["Tension","Compression"])
+%     Tests            tests to process (default ["Tension","Compression","Fracture"])
 %     Days             day folders to read, in plotting order
-%     CNTPerGroup      how many of the highest-force files in each group
-%                      folder are CNT (default 1)
+%     CNTPerGroup      tension / compression: how many of the highest-force
+%                      files in each group folder are CNT (default 1)
+%     FractureCNTPerGroup   same for fracture (default 4: 4 CNT + 4 NEAT)
+%     MaxPeakDisplacement   fracture specimens peaking beyond this many mm
+%                      are marked as bad tests (default 4, the original rule)
 %
 %   Example
 %     prepareData();                              % everything, defaults
@@ -40,9 +49,11 @@ function processedFile = prepareData(opts)
 arguments
     opts.OrganizedFolder (1,1) string = ""
     opts.OutputFile      (1,1) string = ""
-    opts.Tests           (1,:) string = ["Tension", "Compression"]
+    opts.Tests           (1,:) string = ["Tension", "Compression", "Fracture"]
     opts.Days            (1,:) string = ["monday","tuesday","wednesday","thursday","friday"]
     opts.CNTPerGroup     (1,1) double {mustBeInteger, mustBeNonnegative} = 1
+    opts.FractureCNTPerGroup (1,1) double {mustBeInteger, mustBeNonnegative} = 4
+    opts.MaxPeakDisplacement (1,1) double {mustBePositive} = 4
 end
 
 p = pipelinePaths();
@@ -125,9 +136,15 @@ for y = 1:numel(yearDirs)
                         end
                     end
 
+                    isFracture = testName == "Fracture";
+                    if isFracture
+                        nCNT = opts.FractureCNTPerGroup;
+                    else
+                        nCNT = opts.CNTPerGroup;
+                    end
                     [~, order] = sort(maxForce, 'descend', 'MissingPlacement', 'last');
                     [materials, materialSource] = classifyGroup( ...
-                        string({files.name})', order, opts.CNTPerGroup);
+                        string({files.name})', order, nCNT);
                     count = struct('CNT', 0, 'NEAT', 0);
 
                     for r = 1:nFiles
@@ -140,7 +157,12 @@ for y = 1:numel(yearDirs)
 
                         dim = lookupDimensions(dims, sectionNumber, testName, ...
                                                material, sampleNumber);
-                        c = toStressStrain(raw{k}(:, 1), raw{k}(:, 2), dim);
+                        if isFracture
+                            c = toForceDisplacement(raw{k}(:, 1), raw{k}(:, 2), ...
+                                                    opts.MaxPeakDisplacement);
+                        else
+                            c = toStressStrain(raw{k}(:, 1), raw{k}(:, 2), dim, testName);
+                        end
 
                         specimenID = specimenID + 1;
                         filePath = string(fullfile(files(k).folder, files(k).name));
@@ -181,12 +203,19 @@ for y = 1:numel(yearDirs)
                         rec.Thickness_mm    = dim.Thickness_mm;
                         rec.Diameter_mm     = dim.Diameter_mm;
                         rec.Length_mm       = dim.Length_mm;
+                        rec.NotchLength_mm  = dim.NotchLength_mm;
+                        rec.PreCrackLength_mm = dim.PreCrackLength_mm;
+                        rec.CrackLength_mm  = dim.CrackLength_mm;
                         rec.Area_mm2        = dim.Area_mm2;
                         rec.DimensionSource = dim.Source;
                         rec.DimensionCheck  = dim.Check;
-                        rec.PeakStress_MPa  = c.PeakStress_MPa;
-                        rec.StrainAtPeak    = c.StrainAtPeak;
-                        rec.NumPoints       = numel(c.Strain);
+                        rec.PeakStress_MPa  = fieldOr(c, 'PeakStress_MPa');
+                        rec.StrainAtPeak    = fieldOr(c, 'StrainAtPeak');
+                        rec.PeakForce_N     = fieldOr(c, 'PeakForce_N');
+                        rec.DisplacementAtPeak_mm = fieldOr(c, 'DisplacementAtPeak_mm');
+                        rec.Energy_J        = fieldOr(c, 'Energy_J');
+                        rec.ToeShift_mm     = fieldOr(c, 'ToeShift_mm');
+                        rec.NumPoints       = numel(c.Displacement_mm);
                         rec.Status          = c.Status;
 
                         if isempty(records)
@@ -196,12 +225,7 @@ for y = 1:numel(yearDirs)
                         end
 
                         if c.Status == "ok"
-                            n = numel(c.Strain);
-                            curves.(testName){end+1} = table( ...
-                                repmat(specimenID, n, 1), ...
-                                c.Displacement_mm, c.Force_N, c.Strain, c.Stress_MPa, ...
-                                'VariableNames', {'SpecimenID', 'Displacement_mm', ...
-                                                  'Force_N', 'Strain', 'Stress_MPa'});
+                            curves.(testName){end+1} = curveTable(specimenID, c, isFracture);
                         else
                             warning('prepareData:skipped', '%s (%s): %s', ...
                                 rec.Label, testName, c.Status);
@@ -216,7 +240,7 @@ end
 
 if isempty(records)
     error('prepareData:nothingFound', ...
-        'No tension/compression CSVs found under %s', opts.OrganizedFolder);
+        'No test CSVs found under %s', opts.OrganizedFolder);
 end
 
 specimens = struct2table(records(:));
@@ -241,21 +265,26 @@ writetable(specimens, processedFile, 'Sheet', 'Specimens');
 
 for testName = tests
     if isempty(curves.(testName))
-        curveTable = table(zeros(0,1), zeros(0,1), zeros(0,1), zeros(0,1), zeros(0,1), ...
-            'VariableNames', {'SpecimenID','Displacement_mm','Force_N','Strain','Stress_MPa'});
+        empty = struct('Displacement_mm', zeros(0, 1), 'Force_N', zeros(0, 1), ...
+                       'Strain', zeros(0, 1), 'Stress_MPa', zeros(0, 1));
+        sheet = curveTable(zeros(0, 1), empty, testName == "Fracture");
     else
-        curveTable = vertcat(curves.(testName){:});
+        sheet = vertcat(curves.(testName){:});
     end
-    writetable(curveTable, processedFile, 'Sheet', char(testName));
+    writetable(sheet, processedFile, 'Sheet', char(testName));
 end
 
 settings = table( ...
-    ["Created"; "OrganizedFolder"; "Tests"; "Days"; "CNTPerGroup"; "MaterialRule"; "APRatioByYear"], ...
+    ["Created"; "OrganizedFolder"; "Tests"; "Days"; "CNTPerGroup"; "FractureCNTPerGroup"; ...
+     "MaxPeakDisplacement_mm"; "MaterialRule"; "APRatioByYear"; "CurveEnd"], ...
     [string(datetime('now', 'Format', 'yyyy-MM-dd HH:mm')); ...
      opts.OrganizedFolder; strjoin(tests, ", "); strjoin(opts.Days, ", "); ...
-     string(opts.CNTPerGroup); ...
+     string(opts.CNTPerGroup); string(opts.FractureCNTPerGroup); ...
+     string(opts.MaxPeakDisplacement); ...
      "Filename (CNT / NEAT / EPOXY) when every file in the group names one and both materials appear; otherwise the CNTPerGroup highest max-force files are CNT"; ...
-     strjoin(compose("%d = %g%% AP", apRatio())', ", ")], ...
+     strjoin(compose("%d = %g%% AP", apRatio())', ", "); ...
+     "Tension: up to peak stress (fracture). Compression: whole record to test stop. " + ...
+     "Fracture: toe-compensated (10-40% of peak load line extrapolated to zero load), up to peak load; measured forces"], ...
     'VariableNames', {'Setting', 'Value'});
 writetable(settings, processedFile, 'Sheet', 'Settings');
 
@@ -276,18 +305,28 @@ end
 
 function files = findTestFiles(groupPath, testName)
 % CSVs for one test anywhere under a group folder.
-% Tension excludes compact-tension (Fracture) files.
+% Compact-tension (fracture) records are never tension or compression:
+% they are named Fracture_* or *Compact Tension*, or sit in a "fracture"
+% folder. In 2025, 32 of them have "Tension" in the name (e.g.
+% "Epoxy 4 Compact Tension_3_2.csv"), which the old filter counted as
+% tension coupons.
 allFiles = dir(fullfile(groupPath, '**', '*.csv'));
 if isempty(allFiles)
     files = allFiles;
     return;
 end
-names = upper(string({allFiles.name}));
+names   = upper(string({allFiles.name}));
+folders = upper(string({allFiles.folder}));
+below   = extractAfter(folders, strlength(string(groupPath)));   % sub-folders under the group
+isFracture = contains(names, ["FRACTURE", "COMPACT"]) | ...
+             contains(below, string(filesep) + "FRACTURE");
 switch upper(testName)
     case "TENSION"
-        pick = contains(names, "TENSION") & ~contains(names, "FRACTURE");
+        pick = contains(names, "TENSION") & ~isFracture;
     case "COMPRESSION"
-        pick = contains(names, "COMPRESSION");
+        pick = contains(names, "COMPRESSION") & ~isFracture;
+    case "FRACTURE"
+        pick = isFracture;
     otherwise
         error('prepareData:test', 'Unsupported test "%s".', testName);
 end
@@ -326,6 +365,28 @@ ok = all(isfinite(dispForce), 2);
 d = dispForce(ok, 1);
 F = dispForce(ok, 2);
 fp = string(sprintf('%d|%.8g|%.8g|%.8g', numel(F), sum(F), max(F), sum(d)));
+end
+
+function T = curveTable(specimenID, c, isFracture)
+% Rows of one specimen for the test's curve sheet
+n = numel(c.Displacement_mm);
+id = repmat(specimenID, n, 1);
+if isFracture
+    T = table(id, c.Displacement_mm, c.Force_N, ...
+        'VariableNames', {'SpecimenID', 'Displacement_mm', 'Force_N'});
+else
+    T = table(id, c.Displacement_mm, c.Force_N, c.Strain, c.Stress_MPa, ...
+        'VariableNames', {'SpecimenID', 'Displacement_mm', 'Force_N', 'Strain', 'Stress_MPa'});
+end
+end
+
+function v = fieldOr(s, name)
+% s.(name), or NaN when that result type does not have the field
+if isfield(s, name)
+    v = s.(name);
+else
+    v = NaN;
+end
 end
 
 function rel = relativePath(fullPath, root)

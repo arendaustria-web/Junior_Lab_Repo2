@@ -133,83 +133,15 @@ writetable(results, opts.ResultsFile, 'Sheet', 'All Specimens');
 writetable(summary, opts.ResultsFile, 'Sheet', 'Summary');
 
 %% ------------------------------------------------------------ figure
-if ~isfolder(opts.OutputFolder), mkdir(opts.OutputFolder); end
-if opts.ShowFigures, vis = 'on'; else, vis = 'off'; end
-
-fig = figure('Visible', vis, 'Color', 'w', 'Units', 'pixels', 'Position', [100 100 1000 650]);
-ax = axes(fig);
-hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on');
-
-matColors = [0.000 0.447 0.741;     % first material  (CNT)  blue
-             0.850 0.325 0.098];    % second material (NEAT) orange
-nMat = numel(opts.Materials);
-offsets = linspace(-1.2, 1.2, nMat);  % x shift in AP-% units so materials sit side by side
-if nMat == 1, offsets = 0; end
-
-handles = gobjects(0);
-labels  = strings(0);
-
-for m = 1:nMat
-    mat   = opts.Materials(m);
-    color = matColors(min(m, size(matColors, 1)), :);
-
-    % individual accepted specimens, spread slightly so they don't overlap
-    pts = ok(ok.Material == mat & isfinite(ok.APRatio_pct), :);
-    if height(pts) > 0
-        jitter = zeros(height(pts), 1);
-        for a = unique(pts.APRatio_pct)'
-            k = find(pts.APRatio_pct == a);
-            if numel(k) > 1
-                jitter(k) = linspace(-0.6, 0.6, numel(k));
-            end
-        end
-        hs = scatter(ax, pts.APRatio_pct + offsets(m) + jitter, pts.Modulus_MPa, 36, ...
-            color, 'filled', 'MarkerFaceAlpha', 0.35);
-        hs.DataTipTemplate.DataTipRows(1).Label = "AP %";
-        hs.DataTipTemplate.DataTipRows(2).Label = "E (MPa)";
-        hs.DataTipTemplate.DataTipRows(end+1) = dataTipTextRow("File", cellstr(pts.FilePath));
-    end
-
-    % mean +/- 1 SD
-    s = summary(summary.Material == mat & isfinite(summary.MeanModulus_MPa) & ...
-                isfinite(summary.APRatio_pct), :);
-    if height(s) > 0
-        sd = s.SD_MPa;
-        sd(~isfinite(sd)) = 0;    % single specimen: no bar
-        he = errorbar(ax, s.APRatio_pct + offsets(m), s.MeanModulus_MPa, sd, 'o-', ...
-            'Color', color, 'LineWidth', 2.2, 'MarkerSize', 8, ...
-            'MarkerFaceColor', color, 'CapSize', 12);
-        handles(end+1) = he;                                         %#ok<AGROW>
-        labels(end+1)  = mat + " mean " + char(177) + " 1 SD";      %#ok<AGROW>
-    end
-end
-
-% x axis: AP %, with the year underneath for traceability
-map = apRatio();
-map = map(ismember(map(:, 1), results.Year), :);
-xticks(ax, map(:, 2));
-xticklabels(ax, compose("%g%% (%d)", map(:, 2), map(:, 1)));
-if ~isempty(map)
-    xlim(ax, [min(map(:, 2)) - 5, max(map(:, 2)) + 5]);
-end
-ylim(ax, [0 Inf]);
-
-xlabel(ax, 'AP loading (%)  (sample year)', 'FontWeight', 'bold', 'FontSize', 16);
-ylabel(ax, 'Compression modulus (MPa)', 'FontWeight', 'bold', 'FontSize', 16);
-title(ax, sprintf('Compression Modulus vs AP Loading  (fit %.3g-%.3g strain)', ...
-      opts.FitWindow(1), opts.FitWindow(2)), 'FontSize', 18);
-ax.FontSize = 13;
-if ~isempty(handles)
-    legend(ax, handles, cellstr(labels), 'Location', 'best', 'FontSize', 12);
-end
-
-outFile = fullfile(opts.OutputFolder, 'Compression_Modulus_vs_AP.png');
-exportgraphics(fig, outFile, 'Resolution', 300);
+fo = struct('Materials', opts.Materials, ...
+            'YLabel', 'Compression modulus (MPa)', ...
+            'Title', sprintf('Compression Modulus vs AP Loading  (fit %.3g-%.3g strain)', ...
+                             opts.FitWindow(1), opts.FitWindow(2)), ...
+            'ValueLabel', "E (MPa)", ...
+            'OutFile', fullfile(opts.OutputFolder, 'Compression_Modulus_vs_AP.png'), ...
+            'ShowFigures', opts.ShowFigures);
+outFile = plotMetricVsAP(ok, 'Modulus_MPa', summary, 'MeanModulus_MPa', 'SD_MPa', fo);
 fprintf('Saved %s\nSaved %s\n', outFile, opts.ResultsFile);
-
-if ~opts.ShowFigures
-    close(fig);
-end
 end
 
 %% ========================================================================

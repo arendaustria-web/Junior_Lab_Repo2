@@ -1,45 +1,61 @@
 function figureFiles = plotTension(opts)
-%PLOTTENSION Tension stress-strain figures, one per AP loading per material.
+%PLOTTENSION Averaged tension stress-strain figures (mean +/- 1 SD).
 %
 %   plotTension()                     uses the default processed workbook
 %   plotTension(Name=Value)           see options below
 %
-%   Reads only the workbook made by prepareData (Specimens + Tension sheets).
-%   Saves  <repo>/Figures/Tension/Tension_AP<ratio>_<year>_<CNT|NEAT>.png
-%   e.g.   Tension_AP40_2024_CNT.png. Year -> AP % is set in private/apRatio.m.
+%   Reads only the workbook made by prepareData (Specimens + Tension sheets)
+%   and saves, in <repo>/Figures/Tension:
+%     Tension_AP<ratio>_<year>_<CNT|NEAT>.png   one per AP loading and material:
+%         faint specimen curves, mean, shaded +/-1 SD band, every fracture
+%         point and the mean fracture point +/-1 SD
+%     Tension_<CNT|NEAT>_AP_Comparison.png      all AP loadings on one plot
+%   plus ProcessedData/Tension_Averages.xlsx (summary, averaged curves and
+%   flagged specimens). Year -> AP % is set in private/apRatio.m; bad
+%   tests are left out by listing them in private/excludedSpecimens.m.
+%
+%   Each mean curve averages the same specimens from 0 to the strain that
+%   at least MinFraction of them reach (here: are still intact at), so it
+%   never jumps when a coupon breaks. See private/averageCurves.m.
 %
 %   Options
-%     ProcessedFile workbook to read (default <repo>/ProcessedData/JuniorLab_ProcessedData.xlsx)
-%     OutputFolder  where the PNGs go (default <repo>/Figures/Tension)
-%     StrainLimit   x-axis upper limit (default 0.03; the old 0.015 hid the
-%                   failure point of the more ductile coupons)
-%     YLimit        [ymin ymax] in MPa; [] = automatic (default)
-%     APRatios      e.g. [40 70]; [] = every AP loading in the workbook
-%     Years         e.g. [2025 2026]; [] = every year in the workbook
-%     Materials     default ["CNT","NEAT"]
-%     ShowFigures   true keeps the figures open so you can hover curves to
-%                   identify specimens (default false)
-%     IncludeDuplicates  true also plots CSVs flagged as copies of another
-%                   specimen (DuplicateOf in the Specimens sheet; default false)
+%     ProcessedFile      workbook to read (default <repo>/ProcessedData/JuniorLab_ProcessedData.xlsx)
+%     OutputFolder       where the PNGs go (default <repo>/Figures/Tension)
+%     SummaryFile        averages workbook (default <repo>/ProcessedData/Tension_Averages.xlsx)
+%     StrainLimit        crop / x-axis upper limit (default 0.2)
+%     MinFraction        share of specimens the mean must keep (default 0.75;
+%                        1 = range shared by every specimen, as in the old code)
+%     YLimit             [ymin ymax] in MPa; [] = automatic (default)
+%     APRatios           e.g. [40 70]; [] = every AP loading in the workbook
+%     Years              e.g. [2025 2026]; [] = every year in the workbook
+%     Materials          default ["CNT","NEAT"]
+%     ShowSpecimens      draw the faint specimen curves (default true)
+%     ShowFigures        keep figures open to hover over curves (default false)
+%     IncludeDuplicates  also use CSVs flagged as copies (default false)
 %
 %   Example
-%     plotTension(StrainLimit=0.02, Years=2026, ShowFigures=true)
+%     plotTension(APRatios=[40 70], ShowFigures=true)
 
 arguments
-    opts.ProcessedFile (1,1) string = ""
-    opts.OutputFolder  (1,1) string = ""
-    opts.StrainLimit   (1,1) double {mustBePositive} = 0.03
-    opts.YLimit        double = []
-    opts.APRatios      double = []
-    opts.Years         double = []
-    opts.Materials     (1,:) string = ["CNT", "NEAT"]
-    opts.ShowFigures   (1,1) logical = false
+    opts.ProcessedFile     (1,1) string = ""
+    opts.OutputFolder      (1,1) string = ""
+    opts.SummaryFile       (1,1) string = ""
+    opts.StrainLimit       (1,1) double {mustBePositive} = 0.2
+    opts.MinFraction       (1,1) double = 0.75
+    opts.YLimit            double = []
+    opts.APRatios          double = []
+    opts.Years             double = []
+    opts.Materials         (1,:) string = ["CNT", "NEAT"]
+    opts.ShowSpecimens     (1,1) logical = true
+    opts.ShowFigures       (1,1) logical = false
     opts.IncludeDuplicates (1,1) logical = false
 end
 
 p = pipelinePaths();
-if opts.ProcessedFile == "", opts.ProcessedFile = p.ProcessedFile;               end
-if opts.OutputFolder == "", opts.OutputFolder = fullfile(p.Figures, 'Tension'); end
+if opts.ProcessedFile == "", opts.ProcessedFile = p.ProcessedFile;                                  end
+if opts.OutputFolder  == "", opts.OutputFolder  = fullfile(p.Figures, 'Tension');                    end
+if opts.SummaryFile   == "", opts.SummaryFile   = fullfile(p.ProcessedDir, 'Tension_Averages.xlsx'); end
 
-figureFiles = plotStressStrainByYear("Tension", opts.ProcessedFile, opts);
+opts.XLimit = opts.StrainLimit;
+figureFiles = plotAveragedCurves("Tension", opts);
 end

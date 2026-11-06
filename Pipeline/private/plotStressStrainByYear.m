@@ -100,7 +100,7 @@ for gi = 1:height(groups)
         legend(ax, legendHandles, cellstr(legendLabels), 'Location', 'eastoutside', ...
                'Interpreter', 'none', 'FontSize', 11);
 
-        xlim(ax, [0 opts.StrainLimit]);
+        xlim(ax, 'tight');              % fit x to the plotted data
         if isempty(opts.YLimit)
             ylim(ax, [0 Inf]);
         else
