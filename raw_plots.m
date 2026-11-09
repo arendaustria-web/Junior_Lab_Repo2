@@ -10,6 +10,14 @@ clear; clc; close all;
 %% Folder/file conventions follow data_process_and_plot2.m
 %% ==========================================================
 
+%% ==========================================================
+%% USER SETTINGS — x-axis limits [min max] in mm
+%% Leave as [] to use tight auto bounds
+%% ==========================================================
+xLims.Compression = [];       % e.g. [0 3]
+xLims.Tension     = [];       % e.g. [0 1.5]
+xLims.Fracture    = [];       % e.g. [0 3.5]
+
 organizedFolder = fullfile(pwd, 'OrganizedData');
 outFolder = fullfile(organizedFolder, 'Raw_Plots');
 if ~isfolder(outFolder), mkdir(outFolder); end
@@ -76,6 +84,9 @@ for t = 1:numel(tests)
     end
 
     axis(ax, 'tight');
+    if ~isempty(xLims.(testName))
+        xlim(ax, xLims.(testName));
+    end
     xlabel(ax, 'Displacement (mm)', 'FontWeight','bold', 'FontSize', 20);
     ylabel(ax, 'Force (N)', 'FontWeight','bold', 'FontSize', 20);
     title(ax, sprintf('%s — Raw, All Years', testName), 'FontSize', 22);
