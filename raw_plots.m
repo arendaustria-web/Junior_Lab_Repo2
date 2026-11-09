@@ -4,6 +4,7 @@ clear; clc; close all;
 %% Quick raw plots — Force vs Displacement, no processing
 %% One figure per test (Compression, Tension, Fracture)
 %% Every run from every year overlaid, one color per year
+%% Fracture curves start-aligned to origin (others raw)
 %% No legend, tight x/y bounds, large figures
 %% Run this script from inside Junior_Lab_Repo2
 %% Folder/file conventions follow data_process_and_plot2.m
@@ -58,8 +59,15 @@ for t = 1:numel(tests)
             f = data(:,3);   % Force (N)
             ok = ~isnan(d) & ~isnan(f);
             if ~any(ok), continue; end
+            d = d(ok); f = f(ok);
 
-            plot(ax, d(ok), f(ok), 'Color', yearColors(y,:), ...
+            % Fracture: align loading start to origin
+            if strcmpi(testName,'Fracture')
+                [d, f, aligned] = alignFractureStart(d, f);
+                if ~aligned, continue; end
+            end
+
+            plot(ax, d, f, 'Color', yearColors(y,:), ...
                 'LineWidth', 1);
             nPlotted = nPlotted + 1;
         end
@@ -77,6 +85,41 @@ for t = 1:numel(tests)
 end
 
 fprintf('\nDone. Plots saved to:\n%s\n', outFolder);
+
+%% ==========================================================
+%% Align fracture loading start (same start-detection steps as
+%% data_process_and_plot2.m; no end cropping or outlier rejection)
+%% ==========================================================
+function [d, f, ok] = alignFractureStart(d, f)
+    ok = false;
+
+    peakForce = max(f);
+    if isempty(peakForce) || isnan(peakForce) || peakForce <= 0
+        return;
+    end
+
+    % Coarse trim: first point at 5% of peak
+    i0 = find(f >= 0.05 * peakForce, 1, 'first');
+    if isempty(i0), return; end
+    d = d(i0:end); f = f(i0:end);
+
+    % Sustained loading slope: >= 50 N/mm for 15 consecutive points
+    fSmooth = movmean(f, 25);
+    dFdx = gradient(fSmooth, d);
+    sustained = movsum(dFdx >= 50, 15) >= 15;
+    i1 = find(sustained, 1, 'first');
+    if isempty(i1), i1 = 1; end
+    i1 = max(1, i1 - 3);            % 3-point padding
+    d = d(i1:end); f = f(i1:end);
+
+    % Shift to origin, clamp noise negatives
+    d = d - d(1);
+    f = f - f(1);
+    d(d < 0) = 0;
+    f(f < 0) = 0;
+
+    ok = true;
+end
 
 %% ==========================================================
 %% Read CSV (header + units rows skipped) as numeric matrix
