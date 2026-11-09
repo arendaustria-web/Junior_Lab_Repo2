@@ -13,6 +13,7 @@ clear; clc; close all;
 %% ==========================================================
 %% USER SETTINGS — x-axis limits [min max] in mm
 %% Leave as [] to use tight auto bounds
+%% If set, any run with displacement outside [min max] is removed
 %% ==========================================================
 xLims.Compression = [];       % e.g. [0 3]
 xLims.Tension     = [];       % e.g. [0 1.5]
@@ -59,6 +60,7 @@ for t = 1:numel(tests)
         files = csvFiles(keep);
 
         nPlotted = 0;
+        nRemoved = 0;
         for i = 1:numel(files)
             data = readRaw(fullfile(files(i).folder, files(i).name));
             if size(data,2) < 3, continue; end
@@ -75,12 +77,20 @@ for t = 1:numel(tests)
                 if ~aligned, continue; end
             end
 
+            % Remove runs that go beyond the user x-limits
+            lim = xLims.(testName);
+            if ~isempty(lim) && (min(d) < lim(1) || max(d) > lim(2))
+                nRemoved = nRemoved + 1;
+                continue;
+            end
+
             plot(ax, d, f, 'Color', yearColors(y,:), ...
                 'LineWidth', 1);
             nPlotted = nPlotted + 1;
         end
 
-        fprintf('%s %s: %d runs plotted\n', yearName, testName, nPlotted);
+        fprintf('%s %s: %d runs plotted, %d removed (outside x-limits)\n', ...
+            yearName, testName, nPlotted, nRemoved);
     end
 
     axis(ax, 'tight');
