@@ -19,6 +19,8 @@ function list = excludedSpecimens()
 
 list = [
     % "FilePath", "reason"
+    "OrganizedData\2026_organized\batch2\friday\friday_10444\tension\TENSION_20260424_83721_1.csv", "slipped in grips (flat at 0.9 MPa to 0.005 strain)"
+    "OrganizedData\2026_organized\batch2\friday\friday_10444\tension\TENSION_20260424_83721_2.csv", "slipped in grips (flat at 0.9 MPa to 0.005 strain)"
 ];
 
 list = string(list);

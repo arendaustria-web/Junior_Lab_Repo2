@@ -18,8 +18,11 @@ function figureFiles = plotAveragedCurves(testName, opts)
 %     Summary  per AP and material: specimens, end of the mean curve, peak
 %              value and where it happens (mean, SD)
 %     Curves   the averaged curves (x, mean, SD)
-%     Flagged  specimens worth a look; nothing is removed unless it is
-%              listed in excludedSpecimens.m
+%     Removed  outliers left out of the plots (opts.RemoveOutliers): peak
+%              value or its position more than 3 scaled MADs from the
+%              median of their AP loading and material
+%     Flagged  remaining specimens worth a look; only removed if listed
+%              in excludedSpecimens.m
 %
 %   Tension and compression plot stress vs strain; fracture plots force vs
 %   displacement. How the mean is built is described in averageCurves.m.
@@ -58,6 +61,7 @@ apMap = apRatio();
 
 results = struct([]);
 flaggedParts = {};
+removedParts = {};
 
 for material = opts.Materials
 
@@ -69,6 +73,10 @@ for material = opts.Materials
         ap   = groups(gi, 1);
         year = groups(gi, 2);
         sel  = specimens(specimens.Year == year & specimens.Material == material, :);
+        if opts.RemoveOutliers
+            [sel, removedRows] = removeOutliers(sel, spec);
+            removedParts{end+1, 1} = removedRows; %#ok<AGROW>
+        end
         if height(sel) == 0
             continue;
         end
@@ -125,7 +133,9 @@ if isempty(results)
 end
 
 flagged = vertcat(flaggedParts{:});
-writeAverages(results, flagged, opts.SummaryFile, spec);
+removed = vertcat(removedParts{:});
+writeAverages(results, flagged, removed, opts.SummaryFile, spec);
+printRemoved(removed, testName);
 printFlags(flagged, testName);
 end
 
@@ -189,7 +199,7 @@ function outFile = detailFigure(res, testName, opts, style, spec)
 [fig, ax] = styledFigure(opts.ShowFigures);
 avg = res.Avg;
 sel = res.Sel;
-[apText, apFile] = apLabels(res.AP);
+[~, apFile] = apLabels(res.AP);
 
 handles = gobjects(0);
 labels  = strings(0);
@@ -217,11 +227,11 @@ if opts.ShowSpecimens
     end
     if ~isempty(hIn)
         handles(end+1) = hIn;
-        labels(end+1)  = sprintf('Specimens in the mean (%d)', avg.N);
+        labels(end+1)  = "Specimens in the mean";
     end
     if ~isempty(hOut)
         handles(end+1) = hOut;
-        labels(end+1)  = sprintf('Shorter tests, not averaged (%d)', avg.NTotal - avg.N);
+        labels(end+1)  = "Shorter tests, not averaged";
     end
 end
 
@@ -246,7 +256,7 @@ if spec.ShowPeaks
     hPts.DataTipTemplate.DataTipRows(2).Label = spec.YTip;
     hPts.DataTipTemplate.DataTipRows(end+1) = dataTipTextRow("Specimen", cellstr(sel.Label));
     handles(end+1) = hPts;
-    labels(end+1)  = sprintf('%s points (%d)', spec.PeakName, height(sel));
+    labels(end+1)  = spec.PeakName + " points";
 
     hPk = errorbar(ax, res.PeakXMean, res.PeakYMean, res.PeakYSD, res.PeakYSD, ...
                    res.PeakXSD, res.PeakXSD, 'D', 'Color', style.Dark, ...
@@ -257,13 +267,6 @@ if spec.ShowPeaks
 end
 
 finishAxes(ax, opts, spec);
-title(ax, sprintf('%s %s - %s (%d samples)', res.Material, testName, apText, res.Year), ...
-      'FontSize', 17, 'Color', [0.04 0.04 0.04]);
-sub = "Mean \pm 1 SD of the " + avg.N + " specimens that reach " + xText(avg.XEnd, spec);
-if avg.NTotal > avg.N
-    sub = sub + "; " + (avg.NTotal - avg.N) + " shorter tests dotted";
-end
-subtitle(ax, sub, 'FontSize', 12, 'Color', [0.32 0.32 0.31]);
 legend(ax, handles, cellstr(labels), 'Location', 'eastoutside', ...
        'Interpreter', 'none', 'FontSize', 11);
 
@@ -293,7 +296,7 @@ for r = 1:numel(resList)
         continue;
     end
     handles(end+1) = hMean; %#ok<AGROW>
-    labels(end+1)  = sprintf('%s (%d), n = %d of %d', apText, res.Year, avg.N, avg.NTotal); %#ok<AGROW>
+    labels(end+1)  = apText; %#ok<AGROW>
 
     ends(end+1, :) = [avg.XEnd, avg.Mean(end), res.AP]; %#ok<AGROW>
     sd = avg.SD;
@@ -333,10 +336,6 @@ if ~isempty(ends)
 end
 
 finishAxes(ax, opts, spec);
-title(ax, sprintf('%s %s - mean \\pm 1 SD by AP loading', material, testName), ...
-      'FontSize', 17, 'Color', [0.04 0.04 0.04]);
-sub = "Light = low AP, dark = high AP; each curve averages the specimens that reach its end";
-subtitle(ax, sub, 'FontSize', 12, 'Color', [0.32 0.32 0.31]);
 if ~isempty(handles)
     legend(ax, handles, cellstr(labels), 'Location', 'eastoutside', ...
            'Interpreter', 'none', 'FontSize', 11);
@@ -386,7 +385,7 @@ for r = 1:numel(resList)
     end
     hMean.LineWidth = 2.6;
     handles(end+1) = hMean; %#ok<AGROW>
-    labels(end+1)  = sprintf('%s (%d), n = %d', apText, res.Year, res.Avg.NTotal); %#ok<AGROW>
+    labels(end+1)  = apText; %#ok<AGROW>
 end
 
 % 3) Peak points and mean peak +/- 1 SD for each AP
@@ -417,10 +416,6 @@ if spec.ShowPeaks
 end
 
 finishAxes(ax, opts, spec);
-title(ax, sprintf('%s %s - every AP loading', material, testName), ...
-      'FontSize', 17, 'Color', [0.04 0.04 0.04]);
-subtitle(ax, "Thin lines = specimens; thick = mean, shaded = " + char(177) + " 1 SD; light = low AP, dark = high AP", ...
-         'FontSize', 12, 'Color', [0.32 0.32 0.31]);
 if ~isempty(handles)
     legend(ax, handles, cellstr(labels), 'Location', 'eastoutside', ...
            'Interpreter', 'none', 'FontSize', 11);
@@ -559,8 +554,43 @@ end
 end
 
 %% ========================================================================
-%% Flags and workbook
+%% Outliers, flags and workbook
 %% ========================================================================
+
+function [sel, rows] = removeOutliers(sel, spec)
+% Drop specimens whose peak value or position of the peak is an outlier
+% within this AP loading and material: more than 3 scaled MADs from the
+% group median (isoutlier's default). Groups under 4 specimens are kept.
+cols = {'Year', 'APRatio_pct', 'Material', 'SpecimenID', 'Label', 'FilePath', ...
+        char(spec.PeakY), char(spec.PeakX)};
+rows = sel([], cols);
+rows.Reason = strings(0, 1);
+if height(sel) < 4
+    return;
+end
+outY = isoutlier(sel.(spec.PeakY));
+outX = isoutlier(sel.(spec.PeakX));
+reason = strings(height(sel), 1);
+reason(outY) = "peak " + spec.YWord + " is an outlier";
+reason(outX & ~outY) = spec.XWord + " at peak is an outlier";
+reason(outX & outY) = "peak " + spec.YWord + " and " + spec.XWord + " at peak are outliers";
+out = outY | outX;
+rows = sel(out, cols);
+rows.Reason = reason(out);
+sel = sel(~out, :);
+end
+
+function printRemoved(removed, testName)
+if isempty(removed) || height(removed) == 0
+    return;
+end
+fprintf('\n%s: left out %d outliers (RemoveOutliers=false keeps them; see the Removed sheet)\n', ...
+    testName, height(removed));
+for i = 1:height(removed)
+    fprintf('  %g%% AP %-4s %s - %s\n', removed.APRatio_pct(i), removed.Material(i), ...
+        removed.Label(i), removed.Reason(i));
+end
+end
 
 function rows = flagSpecimens(sel, spec)
 % Specimens worth a look: peak under half the group median, or peak
@@ -601,7 +631,7 @@ end
 fprintf('\n');
 end
 
-function writeAverages(results, flagged, file, spec)
+function writeAverages(results, flagged, removed, file, spec)
 % Summary, averaged curves and flags in one workbook
 n = numel(results);
 avgs = [results.Avg];
@@ -641,6 +671,9 @@ writetable(summary, file, 'Sheet', 'Summary');
 writetable(curveTable, file, 'Sheet', 'Curves');
 if ~isempty(flagged)
     writetable(flagged, file, 'Sheet', 'Flagged');
+end
+if ~isempty(removed) && height(removed) > 0
+    writetable(removed, file, 'Sheet', 'Removed');
 end
 fprintf('Saved %s\n', file);
 end

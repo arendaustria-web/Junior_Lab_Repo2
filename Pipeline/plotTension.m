@@ -32,6 +32,10 @@ function figureFiles = plotTension(opts)
 %     ShowSpecimens      draw the faint specimen curves (default true)
 %     ShowFigures        keep figures open to hover over curves (default false)
 %     IncludeDuplicates  also use CSVs flagged as copies (default false)
+%     RemoveOutliers     leave out specimens whose peak or position of the
+%                        peak is more than 3 scaled MADs from their group's
+%                        median (isoutlier); listed in the Removed sheet
+%                        (default true)
 %
 %   Example
 %     plotTension(APRatios=[40 70], ShowFigures=true)
@@ -49,6 +53,7 @@ arguments
     opts.ShowSpecimens     (1,1) logical = true
     opts.ShowFigures       (1,1) logical = false
     opts.IncludeDuplicates (1,1) logical = false
+    opts.RemoveOutliers    (1,1) logical = true
 end
 
 p = pipelinePaths();
