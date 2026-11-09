@@ -46,6 +46,8 @@ function results = plotFractureToughness(opts)
 %     Materials          default ["CNT","NEAT"]
 %     ShowFigures        keep the figures open (default false)
 %     IncludeDuplicates  also use CSVs flagged as copies (default false)
+%     NumSpecimens       specimens per AP loading and material, closest to the
+%                        group median (default 13; Inf = all; see private/selectSpecimens.m)
 %
 %   Example
 %     plotFractureToughness(Dimensions="matched", ShowFigures=true)
@@ -59,6 +61,7 @@ arguments
     opts.Materials         (1,:) string = ["CNT", "NEAT"]
     opts.ShowFigures       (1,1) logical = false
     opts.IncludeDuplicates (1,1) logical = false
+    opts.NumSpecimens      (1,1) double {mustBePositive} = 13
 end
 
 p = pipelinePaths();
@@ -71,7 +74,8 @@ if ~ismember(dimsMode, ["section average", "matched"])
     error('toughness:dimensions', 'Dimensions must be "section average" or "matched".');
 end
 
-specimens = loadSpecimens(opts.ProcessedFile, "Fracture", opts.IncludeDuplicates);
+specimens = loadSpecimens(opts.ProcessedFile, "Fracture", opts.IncludeDuplicates, ...
+    opts.NumSpecimens);
 specimens = specimens(ismember(specimens.Material, opts.Materials), :);
 if height(specimens) == 0
     warning('toughness:noData', 'No usable fracture specimens.');

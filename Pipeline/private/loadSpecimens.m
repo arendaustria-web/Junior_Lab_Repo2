@@ -1,4 +1,5 @@
-function [specimens, curves] = loadSpecimens(processedFile, testName, includeDuplicates)
+function [specimens, curves, dropped] = loadSpecimens(processedFile, testName, includeDuplicates, ...
+                                                   numPerGroup, removeOutliers)
 %LOADSPECIMENS Usable specimens of one test from the processed workbook.
 %   Shared by plotTension, plotCompression and plotCompressionModulus.
 %
@@ -11,6 +12,19 @@ function [specimens, curves] = loadSpecimens(processedFile, testName, includeDup
 %   Rows flagged as copies of another specimen (DuplicateOf) are dropped
 %   unless includeDuplicates is true. Specimens listed in
 %   excludedSpecimens.m are always dropped.
+%
+%   Then, within each AP loading and material, outliers are dropped and only
+%   the numPerGroup specimens closest to the group median are kept (see
+%   selectSpecimens.m). Defaults: numPerGroup = 13, removeOutliers = true;
+%   numPerGroup = Inf keeps every specimen. dropped lists the specimens
+%   left out at this step, with a Reason column.
+
+if nargin < 4 || isempty(numPerGroup)
+    numPerGroup = 13;
+end
+if nargin < 5 || isempty(removeOutliers)
+    removeOutliers = true;
+end
 
 if ~isfile(processedFile)
     error('plot:noProcessedFile', ...
@@ -57,12 +71,19 @@ if ~isempty(excluded)
 end
 
 specimens = specimens(keep, :);
+
+% Outliers out, then the numPerGroup closest specimens of each AP and material
+[specimens, dropped] = selectSpecimens(specimens, testName, numPerGroup, removeOutliers);
 if nDuplicates > 0
     fprintf('%s: skipping %d duplicate CSVs (set IncludeDuplicates=true to use them)\n', ...
         testName, nDuplicates);
 end
 if nExcluded > 0
     fprintf('%s: leaving out %d specimens listed in excludedSpecimens.m\n', testName, nExcluded);
+end
+if height(dropped) > 0
+    fprintf('%s: using up to %g specimens per AP loading and material (%d outliers, %d farther from the median left out)\n', ...
+        testName, numPerGroup, sum(dropped.Reason == "outlier"), sum(dropped.Reason ~= "outlier"));
 end
 
 % AP loading always comes from apRatio.m, so editing that file is enough

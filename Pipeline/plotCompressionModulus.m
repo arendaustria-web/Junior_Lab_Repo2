@@ -29,6 +29,8 @@ function results = plotCompressionModulus(opts)
 %     Materials          default ["CNT","NEAT"]
 %     ShowFigures        keep the figure open (default false)
 %     IncludeDuplicates  also use CSVs flagged as copies (default false)
+%     NumSpecimens       specimens per AP loading and material, closest to the
+%                        group median (default 13; Inf = all; see private/selectSpecimens.m)
 %
 %   Example
 %     plotCompressionModulus(FitWindow=[0.005 0.015], ShowFigures=true)
@@ -43,6 +45,7 @@ arguments
     opts.Materials         (1,:) string = ["CNT", "NEAT"]
     opts.ShowFigures       (1,1) logical = false
     opts.IncludeDuplicates (1,1) logical = false
+    opts.NumSpecimens      (1,1) double {mustBePositive} = 13
 end
 
 p = pipelinePaths();
@@ -50,7 +53,8 @@ if opts.ProcessedFile == "", opts.ProcessedFile = p.ProcessedFile;              
 if opts.OutputFolder  == "", opts.OutputFolder  = fullfile(p.Figures, 'Compression');        end
 if opts.ResultsFile   == "", opts.ResultsFile   = fullfile(p.ProcessedDir, 'Compression_Modulus.xlsx'); end
 
-[specimens, curves] = loadSpecimens(opts.ProcessedFile, "Compression", opts.IncludeDuplicates);
+[specimens, curves] = loadSpecimens(opts.ProcessedFile, "Compression", opts.IncludeDuplicates, ...
+    opts.NumSpecimens);
 specimens = specimens(ismember(specimens.Material, opts.Materials), :);
 
 if height(specimens) == 0

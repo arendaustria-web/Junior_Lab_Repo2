@@ -33,8 +33,11 @@ function figureFiles = plotCompression(opts)
 %     IncludeDuplicates  also use CSVs flagged as copies (default false)
 %     RemoveOutliers     leave out specimens whose peak or position of the
 %                        peak is more than 3 scaled MADs from their group's
-%                        median (isoutlier); listed in the Removed sheet
-%                        (default true)
+%                        median (isoutlier) (default true)
+%     NumSpecimens       specimens kept per AP loading and material: the
+%                        ones closest to the group median (default 13;
+%                        Inf = all). Left-out specimens are in the Removed
+%                        sheet. See private/selectSpecimens.m
 %
 %   Example
 %     plotCompression(APRatios=50, Materials="CNT", ShowFigures=true)
@@ -53,6 +56,7 @@ arguments
     opts.ShowFigures       (1,1) logical = false
     opts.IncludeDuplicates (1,1) logical = false
     opts.RemoveOutliers    (1,1) logical = true
+    opts.NumSpecimens      (1,1) double {mustBePositive} = 13
 end
 
 p = pipelinePaths();

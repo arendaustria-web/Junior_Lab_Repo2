@@ -18,9 +18,9 @@ function figureFiles = plotAveragedCurves(testName, opts)
 %     Summary  per AP and material: specimens, end of the mean curve, peak
 %              value and where it happens (mean, SD)
 %     Curves   the averaged curves (x, mean, SD)
-%     Removed  outliers left out of the plots (opts.RemoveOutliers): peak
-%              value or its position more than 3 scaled MADs from the
-%              median of their AP loading and material
+%     Removed  specimens left out by selectSpecimens.m: outliers, and those
+%              beyond the opts.NumSpecimens closest to the median of their
+%              AP loading and material
 %     Flagged  remaining specimens worth a look; only removed if listed
 %              in excludedSpecimens.m
 %
@@ -33,7 +33,8 @@ if ~(opts.MinFraction > 0 && opts.MinFraction <= 1)
 end
 
 spec = testSpec(testName);
-[specimens, curves] = loadSpecimens(opts.ProcessedFile, testName, opts.IncludeDuplicates);
+[specimens, curves, dropped] = loadSpecimens(opts.ProcessedFile, testName, opts.IncludeDuplicates, ...
+                                             opts.NumSpecimens, opts.RemoveOutliers);
 
 specimens = specimens(ismember(specimens.Material, opts.Materials), :);
 if ~isempty(opts.Years)
@@ -61,7 +62,6 @@ apMap = apRatio();
 
 results = struct([]);
 flaggedParts = {};
-removedParts = {};
 
 for material = opts.Materials
 
@@ -73,10 +73,6 @@ for material = opts.Materials
         ap   = groups(gi, 1);
         year = groups(gi, 2);
         sel  = specimens(specimens.Year == year & specimens.Material == material, :);
-        if opts.RemoveOutliers
-            [sel, removedRows] = removeOutliers(sel, spec);
-            removedParts{end+1, 1} = removedRows; %#ok<AGROW>
-        end
         if height(sel) == 0
             continue;
         end
@@ -133,7 +129,9 @@ if isempty(results)
 end
 
 flagged = vertcat(flaggedParts{:});
-removed = vertcat(removedParts{:});
+removed = dropped(ismember(dropped.Material, opts.Materials), ...
+                  {'Year', 'Material', 'SpecimenID', 'Label', 'FilePath', ...
+                   char(spec.PeakY), char(spec.PeakX), 'Reason'});
 writeAverages(results, flagged, removed, opts.SummaryFile, spec);
 printRemoved(removed, testName);
 printFlags(flagged, testName);
@@ -557,37 +555,13 @@ end
 %% Outliers, flags and workbook
 %% ========================================================================
 
-function [sel, rows] = removeOutliers(sel, spec)
-% Drop specimens whose peak value or position of the peak is an outlier
-% within this AP loading and material: more than 3 scaled MADs from the
-% group median (isoutlier's default). Groups under 4 specimens are kept.
-cols = {'Year', 'APRatio_pct', 'Material', 'SpecimenID', 'Label', 'FilePath', ...
-        char(spec.PeakY), char(spec.PeakX)};
-rows = sel([], cols);
-rows.Reason = strings(0, 1);
-if height(sel) < 4
-    return;
-end
-outY = isoutlier(sel.(spec.PeakY));
-outX = isoutlier(sel.(spec.PeakX));
-reason = strings(height(sel), 1);
-reason(outY) = "peak " + spec.YWord + " is an outlier";
-reason(outX & ~outY) = spec.XWord + " at peak is an outlier";
-reason(outX & outY) = "peak " + spec.YWord + " and " + spec.XWord + " at peak are outliers";
-out = outY | outX;
-rows = sel(out, cols);
-rows.Reason = reason(out);
-sel = sel(~out, :);
-end
-
 function printRemoved(removed, testName)
 if isempty(removed) || height(removed) == 0
     return;
 end
-fprintf('\n%s: left out %d outliers (RemoveOutliers=false keeps them; see the Removed sheet)\n', ...
-    testName, height(removed));
+fprintf('\n%s: left out %d specimens (see the Removed sheet)\n', testName, height(removed));
 for i = 1:height(removed)
-    fprintf('  %g%% AP %-4s %s - %s\n', removed.APRatio_pct(i), removed.Material(i), ...
+    fprintf('  %g%% AP %-4s %s - %s\n', apRatio(removed.Year(i)), removed.Material(i), ...
         removed.Label(i), removed.Reason(i));
 end
 end
