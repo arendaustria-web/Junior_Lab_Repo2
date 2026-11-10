@@ -48,6 +48,7 @@ function results = plotFractureToughness(opts)
 %   Options
 %     ProcessedFile      workbook from prepareData (default location)
 %     OutputFolder       where the PNGs go (default <repo>/Figures/Fracture)
+%     PDFFolder          where vector PDFs of the figures go ("" = none, default)
 %     ResultsFile        toughness workbook (default above)
 %     Dimensions         "section average" (default) or "matched"
 %     ValidAOverW        [low high] a/W window (default [0.2 0.8])
@@ -63,6 +64,7 @@ function results = plotFractureToughness(opts)
 arguments
     opts.ProcessedFile     (1,1) string = ""
     opts.OutputFolder      (1,1) string = ""
+    opts.PDFFolder         (1,1) string = ""
     opts.ResultsFile       (1,1) string = ""
     opts.Dimensions        (1,1) string = "section average"
     opts.ValidAOverW       (1,2) double = [0.2 0.8]
@@ -189,12 +191,19 @@ fo = struct('Materials', opts.Materials, 'ShowFigures', opts.ShowFigures, ...
             'YLabel', 'K_{Ic} (MPa\cdotm^{1/2})', ...
             'Title', "", ...
             'ValueLabel', "K_Ic (MPa m^0.5)", ...
-            'OutFile', fullfile(opts.OutputFolder, 'Fracture_KIc_vs_AP.png'));
+            'OutFile', fullfile(opts.OutputFolder, 'Fracture_KIc_vs_AP.png'), ...
+            'PDFFile', "");
+if opts.PDFFolder ~= ""
+    fo.PDFFile = fullfile(opts.PDFFolder, 'Fracture_KIc_vs_AP.pdf');
+end
 fileK = plotMetricVsAP(ok, 'KIc_MPa_sqrtm', summary, 'MeanKIc_MPa_sqrtm', 'SDKIc_MPa_sqrtm', fo);
 
 fo.YLabel     = 'G_{Ic} (kJ/m^2)';
 fo.ValueLabel = "G_Ic (kJ/m^2)";
 fo.OutFile    = fullfile(opts.OutputFolder, 'Fracture_GIc_vs_AP.png');
+if opts.PDFFolder ~= ""
+    fo.PDFFile = fullfile(opts.PDFFolder, 'Fracture_GIc_vs_AP.pdf');
+end
 fileG = plotMetricVsAP(ok, 'GIc_kJ_per_m2', summary, 'MeanGIc_kJ_per_m2', 'SDGIc_kJ_per_m2', fo);
 
 fprintf('Saved %s\nSaved %s\nSaved %s\n', fileK, fileG, opts.ResultsFile);
