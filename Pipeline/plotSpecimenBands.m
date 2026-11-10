@@ -38,6 +38,8 @@ function figureFiles = plotSpecimenBands(testName, opts)
 %     ShowFigures        keep figures open for data tips (default false)
 %     ExportPDF          also save a vector PDF next to each PNG (default false)
 %     IncludeDuplicates  also use CSVs flagged as copies (default false)
+%     NumSpecimens       specimens per AP loading and material, closest to the
+%                        group median (default 13; Inf = all; see private/selectSpecimens.m)
 
 arguments
     testName               (1,1) string {mustBeMember(testName, ["Tension", "Compression", "Fracture"])}
@@ -51,6 +53,7 @@ arguments
     opts.ShowFigures       (1,1) logical = false
     opts.ExportPDF         (1,1) logical = false
     opts.IncludeDuplicates (1,1) logical = false
+    opts.NumSpecimens      (1,1) double {mustBePositive} = 13
 end
 
 if opts.MinFraction > 1
@@ -63,7 +66,8 @@ if opts.OutputFolder  == "", opts.OutputFolder  = fullfile(p.Root, 'Figures_Clau
 spec = testSpec(testName);
 if isempty(opts.XLimit), opts.XLimit = spec.DefaultXLimit; end
 
-[specimens, curves] = loadSpecimens(opts.ProcessedFile, testName, opts.IncludeDuplicates);
+[specimens, curves] = loadSpecimens(opts.ProcessedFile, testName, opts.IncludeDuplicates, ...
+    opts.NumSpecimens);
 specimens = specimens(ismember(specimens.Material, opts.Materials), :);
 if ~isempty(opts.Years),    specimens = specimens(ismember(specimens.Year, opts.Years), :);           end
 if ~isempty(opts.APRatios), specimens = specimens(ismember(specimens.APRatio_pct, opts.APRatios), :); end
@@ -413,29 +417,7 @@ if opts.ExportPDF
     files(end+1) = replace(outFile, ".png", ".pdf");
 end
 for f = files
-    if endsWith(f, ".pdf")
-        args = {'ContentType', 'vector'};
-    else
-        args = {'Resolution', 300};
-    end
-    saved = false;
-    for attempt = 1:3
-        try
-            exportgraphics(fig, f, args{:});
-            saved = true;
-            break;
-        catch err
-            lastErr = err;
-            pause(0.5);
-        end
-    end
-    if ~saved
-        [folder, name, ext] = fileparts(f);
-        alt = fullfile(folder, name + "_" + string(datetime('now', 'Format', 'yyyyMMdd_HHmmss')) + ext);
-        warning('plot:fileLocked', 'Could not write %s (%s). Saved to %s instead.', ...
-                f, lastErr.message, alt);
-        exportgraphics(fig, alt, args{:});
-    end
+    exportFigure(fig, f);
 end
 if ~opts.ShowFigures
     close(fig);
