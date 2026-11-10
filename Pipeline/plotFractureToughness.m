@@ -13,10 +13,18 @@ function results = plotFractureToughness(opts)
 %            U = area under the force-displacement curve up to P_max
 %            (energy method with the compliance factor phi = 1, as in the
 %            original script)
-%   A specimen counts when ValidAOverW(1) < a/W < ValidAOverW(2) (default
-%   0.2-0.8, the original rule). ASTM D5045 itself asks for 0.45-0.55;
+%   A specimen is valid when ValidAOverW(1) < a/W < ValidAOverW(2) (default
+%   0.2-0.8, the original rule) and 2 <= W/B <= 4 (ASTM D5045 proportions;
+%   this also rejects dimension rows with swapped or shifted columns, such
+%   as several 2023 sections). ASTM D5045 itself asks for a/W 0.45-0.55;
 %   these specimens sit near 0.57-0.62, so call the values K_Q / G_Q if you
 %   need to be strict.
+%
+%   The NumSpecimens valid specimens closest to the median of their AP
+%   loading and material (outliers removed first; private/selectSpecimens.m)
+%   make the summary and figures, so every group has NumSpecimens results
+%   when it has that many valid specimens. All specimens are listed, with
+%   an InSelection column.
 %
 %   Differences from the old Fracture_GIc_KIc_Analysis.m
 %     - P_max is the measured peak load. The old script subtracted the load
@@ -46,8 +54,8 @@ function results = plotFractureToughness(opts)
 %     Materials          default ["CNT","NEAT"]
 %     ShowFigures        keep the figures open (default false)
 %     IncludeDuplicates  also use CSVs flagged as copies (default false)
-%     NumSpecimens       specimens per AP loading and material, closest to the
-%                        group median (default 13; Inf = all; see private/selectSpecimens.m)
+%     NumSpecimens       valid specimens per AP loading and material, closest to
+%                        the group median (default 13; Inf = all)
 %
 %   Example
 %     plotFractureToughness(Dimensions="matched", ShowFigures=true)
@@ -74,8 +82,8 @@ if ~ismember(dimsMode, ["section average", "matched"])
     error('toughness:dimensions', 'Dimensions must be "section average" or "matched".');
 end
 
-specimens = loadSpecimens(opts.ProcessedFile, "Fracture", opts.IncludeDuplicates, ...
-    opts.NumSpecimens);
+% Every specimen here; the NumSpecimens are picked from the valid ones below
+specimens = loadSpecimens(opts.ProcessedFile, "Fracture", opts.IncludeDuplicates, Inf, false);
 specimens = specimens(ismember(specimens.Material, opts.Materials), :);
 if height(specimens) == 0
     warning('toughness:noData', 'No usable fracture specimens.');
@@ -106,7 +114,16 @@ K = specimens.PeakForce_N ./ ((B / 1000) .* sqrt(W / 1000)) .* f / 1e6;     % MP
 G = specimens.Energy_J ./ ((B / 1000) .* ((W - a) / 1000)) / 1000;          % kJ/m^2
 G(~(W > a)) = NaN;
 
-valid = isfinite(K) & isfinite(G) & alpha > opts.ValidAOverW(1) & alpha < opts.ValidAOverW(2);
+widthToThickness = W ./ B;
+valid = isfinite(K) & isfinite(G) & alpha > opts.ValidAOverW(1) & alpha < opts.ValidAOverW(2) & ...
+        widthToThickness >= 2 & widthToThickness <= 4;
+
+% The NumSpecimens closest to the median, picked among valid specimens
+inSelection = false(height(specimens), 1);
+if any(valid)
+    kept = selectSpecimens(specimens(valid, :), "Fracture", opts.NumSpecimens, true);
+    inSelection = ismember(specimens.SpecimenID, kept.SpecimenID);
+end
 
 if dimsMode == "section average"
     dimSource = repmat("section average", height(specimens), 1);
@@ -117,17 +134,17 @@ end
 results = table( ...
     specimens.SpecimenID, specimens.APRatio_pct, specimens.Year, specimens.Material, ...
     specimens.Batch, specimens.Day, specimens.Group, specimens.SampleName, ...
-    W, B, a, alpha, specimens.PeakForce_N, specimens.Energy_J, K, G, valid, ...
-    dimSource, specimens.FilePath, ...
+    W, B, a, alpha, widthToThickness, specimens.PeakForce_N, specimens.Energy_J, K, G, ...
+    valid, inSelection, dimSource, specimens.FilePath, ...
     'VariableNames', {'SpecimenID', 'APRatio_pct', 'Year', 'Material', ...
                       'Batch', 'Day', 'Group', 'Sample', ...
-                      'Width_mm', 'Thickness_mm', 'CrackLength_mm', 'a_over_W', ...
+                      'Width_mm', 'Thickness_mm', 'CrackLength_mm', 'a_over_W', 'W_over_B', ...
                       'PeakForce_N', 'Energy_J', 'KIc_MPa_sqrtm', 'GIc_kJ_per_m2', ...
-                      'Valid', 'Dimensions', 'FilePath'});
+                      'Valid', 'InSelection', 'Dimensions', 'FilePath'});
 results = sortrows(results, {'APRatio_pct', 'Material', 'SpecimenID'});
 
 %% ------------------------------------------------------------ summary per AP and material
-ok = results(results.Valid, :);
+ok = results(results.Valid & results.InSelection, :);
 groups = unique(results(:, {'APRatio_pct', 'Year', 'Material'}));
 groups = sortrows(groups, {'APRatio_pct', 'Material'});
 nG = height(groups);
@@ -144,14 +161,15 @@ summary = [groups, table(meanK, sdK, nK, meanG, sdG, nGv, ...
     'VariableNames', {'MeanKIc_MPa_sqrtm', 'SDKIc_MPa_sqrtm', 'NumberK', ...
                       'MeanGIc_kJ_per_m2', 'SDGIc_kJ_per_m2', 'NumberG'})];
 
-fprintf('\nFracture toughness (valid a/W, dimensions: %s)\n', dimsMode);
+fprintf('\nFracture toughness (up to %g valid specimens per group, dimensions: %s)\n', ...
+    opts.NumSpecimens, dimsMode);
 fprintf('  AP %%   Year  Material   K_Ic (MPa m^0.5)      G_Ic (kJ/m^2)\n');
 for i = 1:nG
     fprintf('  %4g   %4d  %-8s  %6.3f +/- %5.3f (%2d)   %6.3f +/- %5.3f (%2d)\n', ...
         groups.APRatio_pct(i), groups.Year(i), groups.Material(i), ...
         meanK(i), sdK(i), nK(i), meanG(i), sdG(i), nGv(i));
 end
-fprintf('  %d of %d specimens outside a/W %.2f-%.2f or without dimensions\n\n', ...
+fprintf('  %d of %d specimens invalid (a/W outside %.2f-%.2f, W/B outside 2-4, or no dimensions)\n\n', ...
     sum(~results.Valid), height(results), opts.ValidAOverW(1), opts.ValidAOverW(2));
 
 %% ------------------------------------------------------------ write workbook
@@ -169,13 +187,12 @@ writetable(summary, opts.ResultsFile, 'Sheet', 'Summary');
 %% ------------------------------------------------------------ figures
 fo = struct('Materials', opts.Materials, 'ShowFigures', opts.ShowFigures, ...
             'YLabel', 'K_{Ic} (MPa\cdotm^{1/2})', ...
-            'Title', 'Fracture Toughness K_{Ic} vs AP Loading', ...
+            'Title', "", ...
             'ValueLabel', "K_Ic (MPa m^0.5)", ...
             'OutFile', fullfile(opts.OutputFolder, 'Fracture_KIc_vs_AP.png'));
 fileK = plotMetricVsAP(ok, 'KIc_MPa_sqrtm', summary, 'MeanKIc_MPa_sqrtm', 'SDKIc_MPa_sqrtm', fo);
 
 fo.YLabel     = 'G_{Ic} (kJ/m^2)';
-fo.Title      = 'Critical Energy Release Rate G_{Ic} vs AP Loading';
 fo.ValueLabel = "G_Ic (kJ/m^2)";
 fo.OutFile    = fullfile(opts.OutputFolder, 'Fracture_GIc_vs_AP.png');
 fileG = plotMetricVsAP(ok, 'GIc_kJ_per_m2', summary, 'MeanGIc_kJ_per_m2', 'SDGIc_kJ_per_m2', fo);

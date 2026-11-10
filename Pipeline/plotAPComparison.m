@@ -56,7 +56,6 @@ if opts.ProcessedFile == "", opts.ProcessedFile = p.ProcessedFile;              
 if opts.OutputFolder  == "", opts.OutputFolder  = fullfile(p.Figures, 'AP_Comparison');   end
 
 numPoints = 200;
-apMap = apRatio();
 figureFiles = strings(0, 1);
 
 for testName = opts.Tests
@@ -78,7 +77,6 @@ for testName = opts.Tests
             continue;
         end
 
-        ramp = materialRamp(material, size(apMap, 1));
         groups = sortrows([apRatio(unique(sel.Year)), unique(sel.Year)]);   % [AP, Year]
 
         % Compute every AP loading first so bands can be drawn under all curves
@@ -87,12 +85,7 @@ for testName = opts.Tests
         for gi = 1:size(groups, 1)
             g = sel(sel.Year == groups(gi, 2), :);
             [x, m, s] = averageToPeak(g, curves, spec, numPoints);
-            k = find(apMap(:, 2) == groups(gi, 1), 1);
-            if isempty(k)
-                shade = [0.54 0.53 0.51];                   % AP not in apRatio.m
-            else
-                shade = ramp(k, :);
-            end
+            shade = plotColors("AP", groups(gi, 1));       % grey if AP not in plotColors.m
             res(end+1) = struct('AP', groups(gi, 1), 'Shade', shade, 'X', x, 'Mean', m, 'SD', s, ...
                                 'PeakX', mean(g.(spec.PeakX), 'omitnan'), ...
                                 'PeakY', mean(g.(spec.PeakY), 'omitnan'), ...
@@ -240,26 +233,6 @@ ax.GridColor  = [0.80 0.80 0.78];
 ax.GridAlpha  = 0.6;
 ax.XColor     = [0.32 0.32 0.31];
 ax.YColor     = [0.32 0.32 0.31];
-end
-
-function R = materialRamp(material, nShades)
-% CNT = blue family, NEAT = orange family, light = low AP -> dark = high AP
-switch upper(string(material))
-    case "CNT"
-        ramp = ["#86b6ef", "#3987e5", "#1c5cab", "#0d366b"];
-    case "NEAT"
-        ramp = ["#fe9068", "#e15102", "#9e3601", "#611e01"];
-    otherwise
-        ramp = ["#c3c2b7", "#898781", "#52514e", "#0b0b0b"];
-end
-R = zeros(numel(ramp), 3);
-for i = 1:numel(ramp)
-    h = char(ramp(i));
-    R(i, :) = sscanf(h(2:end), '%2x')' / 255;
-end
-if nShades ~= size(R, 1) && nShades >= 2
-    R = interp1(linspace(0, 1, size(R, 1)), R, linspace(0, 1, nShades));
-end
 end
 
 function s = sdOrZero(v)

@@ -377,17 +377,9 @@ h.DataTipTemplate.DataTipRows(end+1) = dataTipTextRow("File", repmat(cellstr(fil
 end
 
 function st = materialStyle(material)
-% Same hues as plotAveragedCurves: CNT blue, NEAT orange
-switch upper(string(material))
-    case "CNT",  st.Base = hex2rgb("#2a78d6"); st.Dark = hex2rgb("#0d366b");
-    case "NEAT", st.Base = hex2rgb("#eb6834"); st.Dark = hex2rgb("#7a2a01");
-    otherwise,   st.Base = hex2rgb("#52514e"); st.Dark = hex2rgb("#0b0b0b");
-end
-end
-
-function rgb = hex2rgb(hex)
-h = char(hex);
-rgb = sscanf(h(2:end), '%2x')' / 255;
+% CNT purple, NEAT orange (plotColors.m)
+st.Base = plotColors("Material", material);
+st.Dark = 0.65 * st.Base;
 end
 
 function t = niceTop(v)
