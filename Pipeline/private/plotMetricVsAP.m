@@ -24,8 +24,6 @@ fig = figure('Visible', vis, 'Color', 'w', 'Units', 'pixels', 'Position', [100 1
 ax = axes(fig);
 hold(ax, 'on'); grid(ax, 'on'); box(ax, 'on');
 
-% Same colours as the stress-strain figures: CNT blue (#2a78d6), NEAT orange (#eb6834)
-matColors = containers.Map({'CNT', 'NEAT'}, {[42 120 214] / 255, [235 104 52] / 255});
 nMat = numel(fo.Materials);
 offsets = linspace(-1.2, 1.2, nMat);    % x shift in AP-% units so materials sit side by side
 if nMat == 1
@@ -37,11 +35,7 @@ labels  = strings(0);
 
 for m = 1:nMat
     mat = fo.Materials(m);
-    if isKey(matColors, char(mat))
-        color = matColors(char(mat));
-    else
-        color = [0.32 0.32 0.31];
-    end
+    color = plotColors("Material", mat);            % CNT purple, NEAT orange
 
     % accepted specimens, spread slightly so they don't overlap
     pts = points(points.Material == mat & isfinite(points.APRatio_pct) & ...

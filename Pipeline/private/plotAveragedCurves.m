@@ -8,12 +8,12 @@ function figureFiles = plotAveragedCurves(testName, opts)
 %         peak +/-1 SD in both directions)
 %   For every material
 %     <Test>_<CNT|NEAT>_AP_Comparison.png
-%         mean +/-1 SD of every AP loading on one plot (light = low AP,
-%         dark = high AP)
+%         mean +/-1 SD of every AP loading on one plot, one colour per AP
+%         (plotColors.m)
 %     <Test>_<CNT|NEAT>_AllAP_Specimens.png
 %         every AP loading on one plot WITH its specimen curves (and, for
 %         tension and fracture, every peak point and the mean peak +/-1 SD),
-%         each AP in its own shade
+%         each AP in its own colour
 %   And ProcessedData/<Test>_Averages.xlsx
 %     Summary  per AP and material: specimens, end of the mean curve, peak
 %              value and where it happens (mean, SD)
@@ -57,15 +57,13 @@ end
 years  = unique(specimens.Year);
 groups = sortrows([apRatio(years), years]);              % [AP, Year]; unknown AP (NaN) last
 
-% Shades follow the AP value (40% is always the lightest), not its rank
-apMap = apRatio();
-
+% Colours follow the AP value (40% is always the same colour), not its rank;
+% they are set in plotColors.m
 results = struct([]);
 flaggedParts = {};
 
 for material = opts.Materials
 
-    style = materialStyle(material, size(apMap, 1));
     first = numel(results) + 1;
 
     for gi = 1:size(groups, 1)
@@ -97,12 +95,7 @@ for material = opts.Materials
         res.PeakYSD   = sdOrZero(sel.(spec.PeakY));
         res.PeakXMean = mean(sel.(spec.PeakX), 'omitnan');
         res.PeakXSD   = sdOrZero(sel.(spec.PeakX));
-        k = find(apMap(:, 2) == ap, 1);
-        if isempty(k)
-            res.Shade = [0.54 0.53 0.51];                % AP not in apRatio.m
-        else
-            res.Shade = style.Ramp(k, :);
-        end
+        res.Shade     = plotColors("AP", ap);           % grey if AP not in plotColors.m
 
         if isempty(results)
             results = res;
@@ -112,7 +105,7 @@ for material = opts.Materials
 
         flaggedParts{end+1, 1} = flagSpecimens(sel, spec); %#ok<AGROW>
 
-        figureFiles(end+1, 1) = detailFigure(res, testName, opts, style, spec); %#ok<AGROW>
+        figureFiles(end+1, 1) = detailFigure(res, testName, opts, shadeStyle(res.Shade), spec); %#ok<AGROW>
     end
 
     if numel(results) >= first
@@ -513,33 +506,11 @@ else
 end
 end
 
-function st = materialStyle(material, nShades)
-% CNT = blue family, NEAT = orange family in every figure (incl. modulus).
-% Ramps are one hue, light -> dark, validated as ordinal ramps.
-switch upper(string(material))
-    case "CNT"
-        base = "#2a78d6";  ramp = ["#86b6ef", "#3987e5", "#1c5cab", "#0d366b"];
-    case "NEAT"
-        base = "#eb6834";  ramp = ["#fe9068", "#e15102", "#9e3601", "#611e01"];
-    otherwise
-        base = "#52514e";  ramp = ["#c3c2b7", "#898781", "#52514e", "#0b0b0b"];
-end
-R = zeros(numel(ramp), 3);
-for i = 1:numel(ramp)
-    R(i, :) = hex2rgb(ramp(i));
-end
-if nShades ~= size(R, 1) && nShades >= 2
-    R = interp1(linspace(0, 1, size(R, 1)), R, linspace(0, 1, nShades));
-end
-st.Base  = hex2rgb(base);
-st.Light = 1 - 0.35 * (1 - st.Base);     % faint specimen curves
-st.Dark  = R(end, :);
-st.Ramp  = R;
-end
-
-function rgb = hex2rgb(hex)
-h = char(hex);
-rgb = sscanf(h(2:end), '%2x')' / 255;
+function st = shadeStyle(base)
+% Single-AP figure colours, all from that AP's colour
+st.Base  = base;
+st.Light = 1 - 0.35 * (1 - base);        % faint specimen curves
+st.Dark  = 0.7 * base;                   % mean peak marker
 end
 
 function s = sdOrZero(v)
