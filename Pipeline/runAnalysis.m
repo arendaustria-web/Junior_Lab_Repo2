@@ -12,6 +12,9 @@
 %      plotSpecimenBands.m      processed workbook  ->  Figures_Claude/<Test> (median + percentile bands + peak strip)
 %      plotAPComparison.m       processed workbook  ->  Figures/AP_Comparison/<Test>/PNG and PDF
 %                               (every AP on one plot, curves ending at the mean fracture point)
+%      plotYoungsModulus.m      processed workbook  ->  Young's modulus vs AP (compression or tension)
+%      exportJuniorLab.m        processed workbook  ->  JuniorLabExports/ (Young's modulus for
+%                               compression and tension, K_Ic and G_Ic; 13 specimens per group)
 %      private/                 helpers used by the functions above
 %
 %  Settings you edit
@@ -80,6 +83,10 @@ end
 %% 8) AP comparison series: every specimen, mean curve ending at the mean
 %     fracture point with a dashed line to the axis -> Figures/AP_Comparison
 plotAPComparison('ProcessedFile', processedFile);
+
+%% 9) Exports from the 13 selected specimens -> JuniorLabExports
+%     Young's modulus (compression and tension), K_Ic and G_Ic: PNG, PDF, xlsx
+exportJuniorLab('ProcessedFile', processedFile);
 
 fprintf('\nAll figures are in %s\n', fullfile(fileparts(pipelineFolder), 'Figures'));
 fprintf('Redesigned figures are in %s\n', fullfile(fileparts(pipelineFolder), 'Figures_Claude'));

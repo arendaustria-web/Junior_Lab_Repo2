@@ -9,7 +9,7 @@ function outFile = plotMetricVsAP(points, valueVar, summary, meanVar, sdVar, fo)
 %   summary  one row per AP loading and material:
 %            APRatio_pct, Year, Material, <meanVar>, <sdVar>
 %   fo       struct: Materials, YLabel, Title, ValueLabel, OutFile, ShowFigures
-%            (Title "" = no title)
+%            (Title "" = no title); optional PDFFile also saves a vector PDF
 
 outDir = fileparts(fo.OutFile);
 if ~isfolder(outDir)
@@ -94,6 +94,13 @@ end
 
 outFile = string(fo.OutFile);
 exportFigure(fig, outFile);
+if isfield(fo, 'PDFFile') && strlength(string(fo.PDFFile)) > 0
+    pdfDir = fileparts(fo.PDFFile);
+    if ~isfolder(pdfDir)
+        mkdir(pdfDir);
+    end
+    exportFigure(fig, fo.PDFFile);
+end
 if ~fo.ShowFigures
     close(fig);
 end
