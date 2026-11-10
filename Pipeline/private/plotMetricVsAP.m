@@ -96,7 +96,7 @@ if ~isempty(handles)
 end
 
 outFile = string(fo.OutFile);
-exportgraphics(fig, outFile, 'Resolution', 300);
+exportFigure(fig, outFile);
 if ~fo.ShowFigures
     close(fig);
 end

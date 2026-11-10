@@ -115,7 +115,7 @@ for gi = 1:height(groups)
 
         outFile = fullfile(opts.OutputFolder, ...
             sprintf('%s_%s_%d_%s.png', testName, apFile, year, material));
-        exportgraphics(fig, outFile, 'Resolution', 300);
+        exportFigure(fig, outFile);
         fprintf('Saved %s  (%d curves)\n', outFile, nPlotted);
         figureFiles(end+1, 1) = string(outFile); %#ok<AGROW>
 

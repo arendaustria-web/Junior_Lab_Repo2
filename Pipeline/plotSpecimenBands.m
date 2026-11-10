@@ -417,29 +417,7 @@ if opts.ExportPDF
     files(end+1) = replace(outFile, ".png", ".pdf");
 end
 for f = files
-    if endsWith(f, ".pdf")
-        args = {'ContentType', 'vector'};
-    else
-        args = {'Resolution', 300};
-    end
-    saved = false;
-    for attempt = 1:3
-        try
-            exportgraphics(fig, f, args{:});
-            saved = true;
-            break;
-        catch err
-            lastErr = err;
-            pause(0.5);
-        end
-    end
-    if ~saved
-        [folder, name, ext] = fileparts(f);
-        alt = fullfile(folder, name + "_" + string(datetime('now', 'Format', 'yyyyMMdd_HHmmss')) + ext);
-        warning('plot:fileLocked', 'Could not write %s (%s). Saved to %s instead.', ...
-                f, lastErr.message, alt);
-        exportgraphics(fig, alt, args{:});
-    end
+    exportFigure(fig, f);
 end
 if ~opts.ShowFigures
     close(fig);

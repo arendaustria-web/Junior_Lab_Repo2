@@ -152,8 +152,8 @@ for testName = opts.Tests
         name = sprintf('%s_%s_AP_Comparison', testName, material);
         pngFile = string(fullfile(pngFolder, name + ".png"));
         pdfFile = string(fullfile(pdfFolder, name + ".pdf"));
-        exportgraphics(fig, pngFile, 'Resolution', 300);
-        exportgraphics(fig, pdfFile, 'ContentType', 'vector');
+        pngFile = exportFigure(fig, pngFile);
+        pdfFile = exportFigure(fig, pdfFile);
         if ~opts.ShowFigures
             close(fig);
         end

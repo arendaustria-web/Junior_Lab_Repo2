@@ -497,7 +497,7 @@ ylabel(ax, spec.YLabel, 'FontWeight', 'bold', 'FontSize', 16, 'Color', [0.04 0.0
 end
 
 function saveFigure(fig, outFile, show)
-exportgraphics(fig, outFile, 'Resolution', 300);
+exportFigure(fig, outFile);
 if ~show
     close(fig);
 end
