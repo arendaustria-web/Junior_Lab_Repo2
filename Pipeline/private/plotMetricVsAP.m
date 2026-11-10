@@ -2,13 +2,14 @@ function outFile = plotMetricVsAP(points, valueVar, summary, meanVar, sdVar, fo)
 %PLOTMETRICVSAP One material property against AP loading.
 %   Dots = accepted specimens (spread slightly so they don't overlap),
 %   line with bars = mean +/- 1 SD; CNT and NEAT side by side at each AP
-%   loading; x ticks show the AP % with the sample year in brackets.
+%   loading; x ticks show the AP %.
 %   Shared by plotCompressionModulus and plotFractureToughness.
 %
 %   points   accepted specimens: APRatio_pct, Material, FilePath, <valueVar>
 %   summary  one row per AP loading and material:
 %            APRatio_pct, Year, Material, <meanVar>, <sdVar>
 %   fo       struct: Materials, YLabel, Title, ValueLabel, OutFile, ShowFigures
+%            (Title "" = no title)
 
 outDir = fileparts(fo.OutFile);
 if ~isfolder(outDir)
@@ -76,14 +77,16 @@ map = apRatio();
 map = map(ismember(map(:, 1), summary.Year), :);
 if ~isempty(map)
     xticks(ax, map(:, 2));
-    xticklabels(ax, compose("%g%% (%d)", map(:, 2), map(:, 1)));
+    xticklabels(ax, compose("%g%%", map(:, 2)));
     xlim(ax, [min(map(:, 2)) - 5, max(map(:, 2)) + 5]);
 end
 ylim(ax, [0 Inf]);
 
-xlabel(ax, 'AP loading (%)  (sample year)', 'FontWeight', 'bold', 'FontSize', 16);
+xlabel(ax, 'AP loading (%)', 'FontWeight', 'bold', 'FontSize', 16);
 ylabel(ax, fo.YLabel, 'FontWeight', 'bold', 'FontSize', 16);
-title(ax, fo.Title, 'FontSize', 18);
+if strlength(string(fo.Title)) > 0
+    title(ax, fo.Title, 'FontSize', 18);
+end
 ax.FontSize = 13;
 if ~isempty(handles)
     legend(ax, handles, cellstr(labels), 'Location', 'best', 'FontSize', 12);
