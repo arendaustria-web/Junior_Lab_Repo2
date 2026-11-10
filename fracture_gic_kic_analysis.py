@@ -33,7 +33,7 @@ MATERIALS = ["CNT", "NEAT"]
 YEARS = ["2023", "2024", "2025", "2026"]
 
 # AP / epoxy weight percent for each test year
-AP_PERCENT_BY_YEAR = {"2023": 50, "2024": 40, "2025": 60, "2026": 70}
+AP_PERCENT_BY_YEAR = {"2023": 60, "2024": 40, "2025": 50, "2026": 70}
 
 NUM_CNT_PER_GROUP = 4          # highest-peak-force specimens in a group are CNT
 FRACTURE_DISPLACEMENT_LIMIT = 3.5   # mm, same crop used for plotting

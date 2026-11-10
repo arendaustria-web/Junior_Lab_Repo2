@@ -48,7 +48,7 @@ MATERIALS = ["CNT", "NEAT"]
 YEARS = ["2023", "2024", "2025", "2026"]
 
 # AP / epoxy weight percent for each test year (same as the fracture analysis)
-AP_PERCENT_BY_YEAR = {"2023": 50, "2024": 40, "2025": 60, "2026": 70}
+AP_PERCENT_BY_YEAR = {"2023": 60, "2024": 40, "2025": 50, "2026": 70}
 
 # Fit settings
 FIT_STRESS_SPAN = 0.20   # each window covers 20% of peak stress

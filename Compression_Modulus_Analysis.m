@@ -45,7 +45,7 @@ years = ["2023","2024","2025","2026"];
 %% AP / epoxy weight percent for each test year
 apPercentByYear = containers.Map( ...
     {'2023','2024','2025','2026'}, ...
-    {   50,     40,     60,     70});
+    {   60,     40,     50,     70});
 
 %% Fit settings
 fitSettings.stressSpan = 0.20;   % each window covers 20% of peak stress
