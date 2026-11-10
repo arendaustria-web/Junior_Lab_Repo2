@@ -10,6 +10,8 @@
 %      plotFractureToughness.m  processed workbook  ->  K_Ic and G_Ic vs AP + xlsx
 %                               (replaces the old Fracture_GIc_KIc_Analysis.m)
 %      plotSpecimenBands.m      processed workbook  ->  Figures_Claude/<Test> (median + percentile bands + peak strip)
+%      plotAPComparison.m       processed workbook  ->  Figures/AP_Comparison/<Test>/PNG and PDF
+%                               (every AP on one plot, curves ending at the mean fracture point)
 %      private/                 helpers used by the functions above
 %
 %  Settings you edit
@@ -74,6 +76,10 @@ plotFractureToughness('ProcessedFile', processedFile);
 for testName = ["Tension", "Compression", "Fracture"]
     plotSpecimenBands(testName, 'ProcessedFile', processedFile);
 end
+
+%% 8) AP comparison series: every specimen, mean curve ending at the mean
+%     fracture point with a dashed line to the axis -> Figures/AP_Comparison
+plotAPComparison('ProcessedFile', processedFile);
 
 fprintf('\nAll figures are in %s\n', fullfile(fileparts(pipelineFolder), 'Figures'));
 fprintf('Redesigned figures are in %s\n', fullfile(fileparts(pipelineFolder), 'Figures_Claude'));
