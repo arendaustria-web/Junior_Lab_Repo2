@@ -24,16 +24,16 @@ years = ["2023","2024","2025","2026"];
 
 %% ==========================================================
 %% AP / epoxy composition for each test year (weight percent)
-%%   2023 -> 60% AP / 40% epoxy
+%%   2023 -> 70% AP / 30% epoxy
 %%   2024 -> 40% AP / 60% epoxy
 %%   2025 -> 50% AP / 50% epoxy
-%%   2026 -> 70% AP / 30% epoxy
+%%   2026 -> 60% AP / 40% epoxy
 %% Epoxy content is taken as the balance, 100 - AP.
 %% ==========================================================
 
 apPercentByYear = containers.Map( ...
     {'2023','2024','2025','2026'}, ...
-    {   60,     40,     50,     70});
+    {   70,     40,     50,     60});
 
 plotLimits.fracture = 3.5;   % displacement in mm, same crop used for plotting
 

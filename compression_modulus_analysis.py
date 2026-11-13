@@ -48,7 +48,7 @@ MATERIALS = ["CNT", "NEAT"]
 YEARS = ["2023", "2024", "2025", "2026"]
 
 # AP / epoxy weight percent for each test year (same as the fracture analysis)
-AP_PERCENT_BY_YEAR = {"2023": 60, "2024": 40, "2025": 50, "2026": 70}
+AP_PERCENT_BY_YEAR = {"2023": 70, "2024": 40, "2025": 50, "2026": 60}
 
 # Fit settings
 FIT_STRESS_SPAN = 0.20   # each window covers 20% of peak stress
@@ -322,7 +322,7 @@ def plot_modulus_vs_ap(accepted, summary, out_base):
         x = s.AP_Percent + offsets[material]
         ax.errorbar(x, s.MeanModulus_MPa, yerr=s.StdModulus_MPa, fmt="o-",
                     color=COLORS[material], capsize=5, lw=2, ms=8,
-                    label=f"{material} mean ± 1 SD")
+                    label=f"{material} mean")
 
         pts = accepted[accepted.Material == material]
         jitter = np.random.default_rng(0).uniform(-0.4, 0.4, len(pts))

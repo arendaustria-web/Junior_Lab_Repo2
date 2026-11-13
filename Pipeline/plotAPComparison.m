@@ -29,7 +29,9 @@ function figureFiles = plotAPComparison(opts)
 %     Tests              default ["Tension", "Compression", "Fracture"]
 %     Materials          default ["CNT", "NEAT"]
 %     NumSpecimens       specimens per AP loading and material, closest to the
-%                        group median (default Inf = all; see private/selectSpecimens.m)
+%                        group median (default: 54 for fracture, set in
+%                        private/specimensPerGroup.m; every specimen for tension
+%                        and compression)
 %     RemoveOutliers     leave out isoutlier outliers on the peak and its
 %                        position (default true)
 %     YLimit             [ymin ymax]; [] = automatic (default)
@@ -44,7 +46,7 @@ arguments
     opts.OutputFolder      (1,1) string = ""
     opts.Tests             (1,:) string = ["Tension", "Compression", "Fracture"]
     opts.Materials         (1,:) string = ["CNT", "NEAT"]
-    opts.NumSpecimens      (1,1) double {mustBePositive} = Inf
+    opts.NumSpecimens      double {mustBePositive} = []
     opts.RemoveOutliers    (1,1) logical = true
     opts.YLimit            double = []
     opts.ShowFigures       (1,1) logical = false
@@ -61,8 +63,17 @@ figureFiles = strings(0, 1);
 for testName = opts.Tests
 
     spec = testSpec(testName);
+    % Fracture uses its usual count (54); tension and compression use every specimen
+    numSpecimens = opts.NumSpecimens;
+    if isempty(numSpecimens)
+        if testName == "Fracture"
+            numSpecimens = specimensPerGroup(testName);
+        else
+            numSpecimens = Inf;
+        end
+    end
     [specimens, curves] = loadSpecimens(opts.ProcessedFile, testName, opts.IncludeDuplicates, ...
-                                        opts.NumSpecimens, opts.RemoveOutliers);
+                                        numSpecimens, opts.RemoveOutliers);
 
     pngFolder = fullfile(opts.OutputFolder, testName, 'PNG');
     pdfFolder = fullfile(opts.OutputFolder, testName, 'PDF');
@@ -129,7 +140,7 @@ for testName = opts.Tests
         ink = [0.32 0.32 0.31];
         handles(end+1) = plot(ax, NaN, NaN, 'D', 'Color', ink, 'MarkerFaceColor', ink, ...
                               'MarkerEdgeColor', 'w', 'MarkerSize', 7);
-        labels(end+1)  = "Mean " + spec.PeakName + " " + char(177) + " 1 SD";
+        labels(end+1)  = "Mean " + spec.PeakName;
 
         xlim(ax, [0 Inf]);
         if isempty(opts.YLimit)

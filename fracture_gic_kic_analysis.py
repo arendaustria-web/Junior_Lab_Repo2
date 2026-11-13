@@ -33,7 +33,7 @@ MATERIALS = ["CNT", "NEAT"]
 YEARS = ["2023", "2024", "2025", "2026"]
 
 # AP / epoxy weight percent for each test year
-AP_PERCENT_BY_YEAR = {"2023": 60, "2024": 40, "2025": 50, "2026": 70}
+AP_PERCENT_BY_YEAR = {"2023": 70, "2024": 40, "2025": 50, "2026": 60}
 
 NUM_CNT_PER_GROUP = 4          # highest-peak-force specimens in a group are CNT
 FRACTURE_DISPLACEMENT_LIMIT = 3.5   # mm, same crop used for plotting
@@ -325,10 +325,9 @@ def plot_metric_vs_ap(accepted, summary, mean_col, std_col, value_col,
                    color=COLORS[material], edgecolors="none")
 
         s = summary[summary.Material == material].sort_values("AP_Percent")
-        n_total = int(s.NumberOfSpecimens.sum())
         ax.errorbar(s.AP_Percent + offsets[material], s[mean_col], yerr=s[std_col],
                     fmt="o-", color=COLORS[material], capsize=5, lw=2, ms=8,
-                    label=f"{material} mean ± 1 SD (n = {n_total})")
+                    label=f"{material} mean")
 
     labels = {v: y for y, v in AP_PERCENT_BY_YEAR.items()}
     ax.set_xticks(ap_values)

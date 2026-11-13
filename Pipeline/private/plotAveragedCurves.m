@@ -228,10 +228,6 @@ end
 
 hBand = drawBand(ax, avg, style.Base, 0.22);
 hMean = drawMean(ax, avg, style.Base, spec);
-if ~isempty(hBand)
-    handles(end+1) = hBand;
-    labels(end+1)  = char(177) + " 1 SD";
-end
 if ~isempty(hMean)
     handles(end+1) = hMean;
     labels(end+1)  = "Mean";
@@ -254,7 +250,7 @@ if spec.ShowPeaks
                    'MarkerFaceColor', style.Dark, 'MarkerEdgeColor', 'w', ...
                    'MarkerSize', 8, 'LineWidth', 1.8, 'CapSize', 10);
     handles(end+1) = hPk;
-    labels(end+1)  = "Mean " + lower(spec.PeakName) + " " + char(177) + " 1 SD";
+    labels(end+1)  = "Mean " + lower(spec.PeakName);
 end
 
 finishAxes(ax, opts, spec);
@@ -307,7 +303,7 @@ if spec.ShowPeaks && ~isempty(handles)
     ink = [0.32 0.32 0.31];
     handles(end+1) = plot(ax, NaN, NaN, 'D', 'Color', ink, 'MarkerFaceColor', ink, ...
                           'MarkerEdgeColor', 'w', 'MarkerSize', 7);
-    labels(end+1)  = "Mean " + lower(spec.PeakName) + " " + char(177) + " 1 SD";
+    labels(end+1)  = "Mean " + lower(spec.PeakName);
 end
 
 % Direct labels at the right-hand end of long mean curves, spread so they
@@ -403,7 +399,7 @@ if spec.ShowPeaks
     labels(end+1)  = spec.PeakName + " points";
     handles(end+1) = plot(ax, NaN, NaN, 'D', 'Color', ink, 'MarkerFaceColor', ink, ...
                           'MarkerEdgeColor', 'w', 'MarkerSize', 7);
-    labels(end+1)  = "Mean " + lower(spec.PeakName) + " " + char(177) + " 1 SD";
+    labels(end+1)  = "Mean " + lower(spec.PeakName);
 end
 
 finishAxes(ax, opts, spec);
