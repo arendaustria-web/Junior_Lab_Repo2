@@ -1,5 +1,5 @@
 function exportJuniorLab(opts)
-%EXPORTJUNIORLAB Young's modulus and fracture toughness exports from the 13 selected specimens.
+%EXPORTJUNIORLAB Young's modulus, fracture toughness and AP comparison exports.
 %
 %   exportJuniorLab()
 %   exportJuniorLab(Name=Value)
@@ -13,19 +13,26 @@ function exportJuniorLab(opts)
 %       PNG/Fracture_KIc_vs_AP.png, Fracture_GIc_vs_AP.png
 %       PDF/  the same figures as vector PDFs
 %       Fracture_GIc_KIc.xlsx
+%     AP_Comparison/
+%       Tension/PNG, Tension/PDF          <Test>_<CNT|NEAT>_AP_Comparison
+%       Compression/PNG, Compression/PDF  (every AP loading on one plot, mean
+%       Fracture/PNG, Fracture/PDF         curve ending at the mean fracture point)
 %   Each workbook has a "Summary" sheet (mean, SD, n per AP loading and
 %   material) and an "All Specimens" sheet with an InSelection column.
 %
-%   Every value comes from the valid specimens closest to the median of
-%   their AP loading and material (private/selectSpecimens.m): 13 per group
-%   for Young's modulus, 54 for fracture (private/specimensPerGroup.m).
-%   Methods: plotYoungsModulus (steepest straight window before the peak)
-%   and plotFractureToughness (ASTM D5045 compact tension).
+%   Modulus and toughness values come from the valid specimens closest to
+%   the median of their AP loading and material (private/selectSpecimens.m):
+%   13 per group for Young's modulus, 54 for fracture
+%   (private/specimensPerGroup.m). The AP comparison figures use 54 per
+%   group for fracture and every specimen for tension and compression.
+%   Methods: plotYoungsModulus (steepest straight window before the peak),
+%   plotFractureToughness (ASTM D5045 compact tension) and plotAPComparison.
 %
 %   Options
 %     ProcessedFile   workbook from prepareData (default location)
 %     OutputFolder    default <repo>/JuniorLabExports
-%     NumSpecimens    specimens per AP loading and material (default from
+%     NumSpecimens    specimens per AP loading and material for the modulus
+%                     and toughness results (default from
 %                     private/specimensPerGroup.m: modulus 13, fracture 54)
 %     ShowFigures     keep the figures open (default false)
 
@@ -59,6 +66,11 @@ plotFractureToughness( ...
     'PDFFolder',     fullfile(fractureDir, 'PDF'), ...
     'ResultsFile',   fullfile(fractureDir, 'Fracture_GIc_KIc.xlsx'), ...
     'NumSpecimens',  opts.NumSpecimens, ...
+    'ShowFigures',   opts.ShowFigures);
+
+plotAPComparison( ...
+    'ProcessedFile', opts.ProcessedFile, ...
+    'OutputFolder',  fullfile(opts.OutputFolder, 'AP_Comparison'), ...
     'ShowFigures',   opts.ShowFigures);
 
 fprintf('\nJunior Lab exports are in %s\n', opts.OutputFolder);

@@ -83,7 +83,7 @@ if ~isfolder(opts.OutputFolder)
 end
 
 years  = unique(specimens.Year);
-groups = sortrows([apRatio(years), years]);       % [AP, Year]
+groups = sortrows([apRatio(testName, years), years]);       % [AP, Year]
 
 for material = opts.Materials
     style = materialStyle(material);

@@ -14,11 +14,14 @@
 %                               (every AP on one plot, curves ending at the mean fracture point)
 %      plotYoungsModulus.m      processed workbook  ->  Young's modulus vs AP (compression or tension)
 %      exportJuniorLab.m        processed workbook  ->  JuniorLabExports/ (Young's modulus for
-%                               compression and tension, K_Ic and G_Ic; 13 specimens per group)
+%                               compression and tension, K_Ic and G_Ic, AP comparison figures)
 %      private/                 helpers used by the functions above
 %
 %  Settings you edit
-%    private/apRatio.m            year -> AP loading (2024 40%, 2025 50%, 2026 60%, 2023 70%)
+%    private/apRatio.m            year -> AP loading, per test
+%                                 tension, compression: 2024 40%, 2025 50%, 2023 60%, 2026 70%
+%                                 fracture:             2024 40%, 2025 50%, 2026 60%, 2023 70%
+%    private/specimensPerGroup.m  specimens per AP loading and material (13; fracture 54)
 %    private/excludedSpecimens.m  bad tests to leave out of every plot and average
 %
 %  Outputs
@@ -84,8 +87,9 @@ end
 %     fracture point with a dashed line to the axis -> Figures/AP_Comparison
 plotAPComparison('ProcessedFile', processedFile);
 
-%% 9) Exports from the 13 selected specimens -> JuniorLabExports
+%% 9) Exports -> JuniorLabExports
 %     Young's modulus (compression and tension), K_Ic and G_Ic: PNG, PDF, xlsx
+%     AP comparison figures: PNG, PDF
 exportJuniorLab('ProcessedFile', processedFile);
 
 fprintf('\nAll figures are in %s\n', fullfile(fileparts(pipelineFolder), 'Figures'));

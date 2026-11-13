@@ -9,7 +9,7 @@ function n = specimensPerGroup(testName)
 %     Tension      13
 %     Compression  13
 %     Fracture     54   (every fracture group has at least 55 valid specimens;
-%                        the smallest is 70% AP NEAT, the 2023 samples)
+%                        the smallest is NEAT 2023, which is 70% AP for fracture)
 
 switch lower(string(testName))
     case "fracture"

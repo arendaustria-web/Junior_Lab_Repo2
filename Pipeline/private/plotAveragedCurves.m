@@ -55,7 +55,7 @@ end
 
 % One group per year (= one AP loading), ordered by AP
 years  = unique(specimens.Year);
-groups = sortrows([apRatio(years), years]);              % [AP, Year]; unknown AP (NaN) last
+groups = sortrows([apRatio(testName, years), years]);    % [AP, Year]; unknown AP (NaN) last
 
 % Colours follow the AP value (40% is always the same colour), not its rank;
 % they are set in plotColors.m
@@ -528,7 +528,7 @@ if isempty(removed) || height(removed) == 0
 end
 fprintf('\n%s: left out %d specimens (see the Removed sheet)\n', testName, height(removed));
 for i = 1:height(removed)
-    fprintf('  %g%% AP %-4s %s - %s\n', apRatio(removed.Year(i)), removed.Material(i), ...
+    fprintf('  %g%% AP %-4s %s - %s\n', apRatio(testName, removed.Year(i)), removed.Material(i), ...
         removed.Label(i), removed.Reason(i));
 end
 end

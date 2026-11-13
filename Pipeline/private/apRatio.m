@@ -1,17 +1,27 @@
-function ap = apRatio(year)
-%APRATIO AP loading (%) used for each Junior Lab year.
-%   ap  = apRatio(year)   AP % for each year (NaN if the year is not listed)
-%   map = apRatio()       the whole table as [year, AP%] rows
+function ap = apRatio(testName, year)
+%APRATIO AP loading (%) used for each Junior Lab year, per test.
+%   ap  = apRatio(testName, year)   AP % for each year (NaN if the year is not listed)
+%   map = apRatio(testName)         the whole table as [year, AP%] rows
 %
 %   This is the only place the year -> AP relationship is defined.
-%   Add a row here when a new year's samples are made.
+%   The fracture specimens have their own table: for them 2026 is 60 % and
+%   2023 is 70 %. Tension and compression use 2023 = 60 % and 2026 = 70 %.
+%   Add a row to both tables when a new year's samples are made.
 
-map = [ 2024  40
-        2025  50
-        2026  60
-        2023  70 ];
+switch lower(string(testName))
+    case "fracture"
+        map = [ 2024  40
+                2025  50
+                2026  60
+                2023  70 ];
+    otherwise                       % tension, compression
+        map = [ 2024  40
+                2025  50
+                2023  60
+                2026  70 ];
+end
 
-if nargin == 0
+if nargin < 2
     ap = sortrows(map, 2);
     return;
 end

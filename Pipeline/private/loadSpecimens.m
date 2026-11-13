@@ -4,7 +4,7 @@ function [specimens, curves, dropped] = loadSpecimens(processedFile, testName, i
 %   Shared by plotTension, plotCompression and plotCompressionModulus.
 %
 %   specimens   Specimens-sheet rows with Status "ok" for this test, plus
-%                 APRatio_pct  AP loading from apRatio(Year)
+%                 APRatio_pct  AP loading from apRatio(testName, Year)
 %                 CurveRows    row indices into curves for that specimen
 %   curves      the test's curve sheet (SpecimenID, Displacement_mm,
 %               Force_N, Strain, Stress_MPa)
@@ -87,8 +87,9 @@ if height(dropped) > 0
         testName, numPerGroup, sum(dropped.Reason == "outlier"), sum(dropped.Reason ~= "outlier"));
 end
 
-% AP loading always comes from apRatio.m, so editing that file is enough
-specimens.APRatio_pct = apRatio(specimens.Year);
+% AP loading always comes from apRatio.m (fracture has its own year table),
+% so editing that file is enough
+specimens.APRatio_pct = apRatio(testName, specimens.Year);
 unknown = unique(specimens.Year(isnan(specimens.APRatio_pct)));
 if ~isempty(unknown)
     warning('plot:noAPRatio', 'No AP ratio defined in apRatio.m for year(s): %s', ...
