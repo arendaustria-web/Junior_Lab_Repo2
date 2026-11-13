@@ -56,7 +56,8 @@ function results = plotFractureToughness(opts)
 %     ShowFigures        keep the figures open (default false)
 %     IncludeDuplicates  also use CSVs flagged as copies (default false)
 %     NumSpecimens       valid specimens per AP loading and material, closest to
-%                        the group median (default 13; Inf = all)
+%                        the group median (default 54, set in
+%                        private/specimensPerGroup.m; Inf = all)
 %
 %   Example
 %     plotFractureToughness(Dimensions="matched", ShowFigures=true)
@@ -71,13 +72,14 @@ arguments
     opts.Materials         (1,:) string = ["CNT", "NEAT"]
     opts.ShowFigures       (1,1) logical = false
     opts.IncludeDuplicates (1,1) logical = false
-    opts.NumSpecimens      (1,1) double {mustBePositive} = 13
+    opts.NumSpecimens      double {mustBePositive} = []
 end
 
 p = pipelinePaths();
 if opts.ProcessedFile == "", opts.ProcessedFile = p.ProcessedFile;                                   end
 if opts.OutputFolder  == "", opts.OutputFolder  = fullfile(p.Figures, 'Fracture');                    end
 if opts.ResultsFile   == "", opts.ResultsFile   = fullfile(p.ProcessedDir, 'Fracture_Toughness.xlsx'); end
+if isempty(opts.NumSpecimens), opts.NumSpecimens = specimensPerGroup("Fracture");                     end
 
 dimsMode = lower(strtrim(opts.Dimensions));
 if ~ismember(dimsMode, ["section average", "matched"])

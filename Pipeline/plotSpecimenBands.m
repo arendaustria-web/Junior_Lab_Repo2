@@ -39,7 +39,8 @@ function figureFiles = plotSpecimenBands(testName, opts)
 %     ExportPDF          also save a vector PDF next to each PNG (default false)
 %     IncludeDuplicates  also use CSVs flagged as copies (default false)
 %     NumSpecimens       specimens per AP loading and material, closest to the
-%                        group median (default 13; Inf = all; see private/selectSpecimens.m)
+%                        group median (default from private/specimensPerGroup.m:
+%                        13, fracture 54; Inf = all)
 
 arguments
     testName               (1,1) string {mustBeMember(testName, ["Tension", "Compression", "Fracture"])}
@@ -53,7 +54,7 @@ arguments
     opts.ShowFigures       (1,1) logical = false
     opts.ExportPDF         (1,1) logical = false
     opts.IncludeDuplicates (1,1) logical = false
-    opts.NumSpecimens      (1,1) double {mustBePositive} = 13
+    opts.NumSpecimens      double {mustBePositive} = []
 end
 
 if opts.MinFraction > 1

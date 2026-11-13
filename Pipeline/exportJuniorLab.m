@@ -16,21 +16,23 @@ function exportJuniorLab(opts)
 %   Each workbook has a "Summary" sheet (mean, SD, n per AP loading and
 %   material) and an "All Specimens" sheet with an InSelection column.
 %
-%   Every value comes from the NumSpecimens valid specimens closest to the
-%   median of their AP loading and material (private/selectSpecimens.m).
+%   Every value comes from the valid specimens closest to the median of
+%   their AP loading and material (private/selectSpecimens.m): 13 per group
+%   for Young's modulus, 54 for fracture (private/specimensPerGroup.m).
 %   Methods: plotYoungsModulus (steepest straight window before the peak)
 %   and plotFractureToughness (ASTM D5045 compact tension).
 %
 %   Options
 %     ProcessedFile   workbook from prepareData (default location)
 %     OutputFolder    default <repo>/JuniorLabExports
-%     NumSpecimens    specimens per AP loading and material (default 13)
+%     NumSpecimens    specimens per AP loading and material (default from
+%                     private/specimensPerGroup.m: modulus 13, fracture 54)
 %     ShowFigures     keep the figures open (default false)
 
 arguments
     opts.ProcessedFile (1,1) string = ""
     opts.OutputFolder  (1,1) string = ""
-    opts.NumSpecimens  (1,1) double {mustBePositive} = 13
+    opts.NumSpecimens  double {mustBePositive} = []
     opts.ShowFigures   (1,1) logical = false
 end
 
