@@ -95,8 +95,13 @@ function plotYearlyFracturePoints( ...
     yearsToPlot = ["2023","2024","2025","2026"];
     testName    = string(testName);
 
-    %% Composition percentages
-    apPercentages = [70, 40, 50, 60];
+    %% Composition percentages for 2023-2026. The fracture specimens have
+    %% 2023 = 70 and 2026 = 60; tension and compression have the reverse.
+    if strcmpi(testName, "Fracture")
+        apPercentages = [70, 40, 50, 60];
+    else
+        apPercentages = [60, 40, 50, 70];
+    end
     epoxyPercentages = 100 - apPercentages;
 
 

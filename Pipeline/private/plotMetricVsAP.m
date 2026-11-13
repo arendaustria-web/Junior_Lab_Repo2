@@ -72,13 +72,12 @@ for m = 1:nMat
     end
 end
 
-% x axis: AP %, with the year underneath for traceability
-map = apRatio();
-map = map(ismember(map(:, 1), summary.Year), :);
-if ~isempty(map)
-    xticks(ax, map(:, 2));
-    xticklabels(ax, compose("%g%%", map(:, 2)));
-    xlim(ax, [min(map(:, 2)) - 5, max(map(:, 2)) + 5]);
+% x axis: one tick per AP loading in the summary
+apTicks = unique(summary.APRatio_pct(isfinite(summary.APRatio_pct)));
+if ~isempty(apTicks)
+    xticks(ax, apTicks);
+    xticklabels(ax, compose("%g%%", apTicks));
+    xlim(ax, [min(apTicks) - 5, max(apTicks) + 5]);
 end
 ylim(ax, [0 Inf]);
 

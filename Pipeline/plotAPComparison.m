@@ -88,7 +88,7 @@ for testName = opts.Tests
             continue;
         end
 
-        groups = sortrows([apRatio(unique(sel.Year)), unique(sel.Year)]);   % [AP, Year]
+        groups = sortrows([apRatio(testName, unique(sel.Year)), unique(sel.Year)]);   % [AP, Year]
 
         % Compute every AP loading first so bands can be drawn under all curves
         res = struct('AP', {}, 'Shade', {}, 'X', {}, 'Mean', {}, 'SD', {}, ...

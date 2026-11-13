@@ -42,10 +42,11 @@ days = {'monday','tuesday','wednesday','thursday','friday'};
 materials = ["CNT","NEAT"];
 years = ["2023","2024","2025","2026"];
 
-%% AP / epoxy weight percent for each test year
+%% AP / epoxy weight percent for each test year (compression specimens;
+%% the fracture specimens use 2026 = 60 and 2023 = 70)
 apPercentByYear = containers.Map( ...
     {'2023','2024','2025','2026'}, ...
-    {   70,     40,     50,     60});
+    {   60,     40,     50,     70});
 
 %% Fit settings
 fitSettings.stressSpan = 0.20;   % each window covers 20% of peak stress
