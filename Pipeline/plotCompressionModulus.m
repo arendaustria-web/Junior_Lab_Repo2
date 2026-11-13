@@ -27,7 +27,7 @@ arguments
     opts.Materials         (1,:) string = ["CNT", "NEAT"]
     opts.ShowFigures       (1,1) logical = false
     opts.IncludeDuplicates (1,1) logical = false
-    opts.NumSpecimens      (1,1) double {mustBePositive} = 13
+    opts.NumSpecimens      double {mustBePositive} = []
 end
 
 if opts.ResultsFile == ""

@@ -44,7 +44,8 @@ function results = plotYoungsModulus(testName, opts)
 %     ShowFigures        keep the figure open (default false)
 %     IncludeDuplicates  also use CSVs flagged as copies (default false)
 %     NumSpecimens       accepted fits per AP loading and material, closest to
-%                        the group median (default 13; Inf = all)
+%                        the group median (default 13, set in
+%                        private/specimensPerGroup.m; Inf = all)
 %
 %   Example
 %     plotYoungsModulus("Tension", NumSpecimens=Inf, ShowFigures=true)
@@ -64,7 +65,7 @@ arguments
     opts.Materials         (1,:) string = ["CNT", "NEAT"]
     opts.ShowFigures       (1,1) logical = false
     opts.IncludeDuplicates (1,1) logical = false
-    opts.NumSpecimens      (1,1) double {mustBePositive} = 13
+    opts.NumSpecimens      double {mustBePositive} = []
 end
 
 p = pipelinePaths();
@@ -72,6 +73,7 @@ if opts.ProcessedFile == "", opts.ProcessedFile = p.ProcessedFile;              
 if opts.OutputFolder  == "", opts.OutputFolder  = fullfile(p.Figures, testName);                             end
 if opts.ResultsFile   == "", opts.ResultsFile   = fullfile(p.ProcessedDir, testName + "_Youngs_Modulus.xlsx"); end
 if opts.FileName      == "", opts.FileName      = testName + "_Youngs_Modulus_vs_AP";                        end
+if isempty(opts.NumSpecimens), opts.NumSpecimens = specimensPerGroup(testName);                              end
 
 % Every specimen here; the NumSpecimens are picked from the accepted fits below
 [specimens, curves] = loadSpecimens(opts.ProcessedFile, testName, opts.IncludeDuplicates, ...

@@ -15,12 +15,13 @@ function [specimens, curves, dropped] = loadSpecimens(processedFile, testName, i
 %
 %   Then, within each AP loading and material, outliers are dropped and only
 %   the numPerGroup specimens closest to the group median are kept (see
-%   selectSpecimens.m). Defaults: numPerGroup = 13, removeOutliers = true;
+%   selectSpecimens.m). Defaults: numPerGroup from specimensPerGroup.m
+%   (13, fracture 54), removeOutliers = true;
 %   numPerGroup = Inf keeps every specimen. dropped lists the specimens
 %   left out at this step, with a Reason column.
 
 if nargin < 4 || isempty(numPerGroup)
-    numPerGroup = 13;
+    numPerGroup = specimensPerGroup(testName);
 end
 if nargin < 5 || isempty(removeOutliers)
     removeOutliers = true;
