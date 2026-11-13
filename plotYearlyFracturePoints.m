@@ -96,7 +96,7 @@ function plotYearlyFracturePoints( ...
     testName    = string(testName);
 
     %% Composition percentages
-    apPercentages = [60, 40, 50, 70];
+    apPercentages = [70, 40, 50, 60];
     epoxyPercentages = 100 - apPercentages;
 
 
@@ -477,7 +477,7 @@ compositionLabel = ...
         testName + " - " + replace(plotGroup,"_","/") + " - All Compositions", ...
         'Interpreter','none');
 
-        subtitleText = "Full experimental mean with shaded +/- 1 SD";
+        subtitleText = "Full experimental mean with shaded spread";
 
         subtitle(ax, subtitleText, 'Interpreter','none');
 

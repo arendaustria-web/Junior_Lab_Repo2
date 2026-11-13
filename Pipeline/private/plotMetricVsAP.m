@@ -68,7 +68,7 @@ for m = 1:nMat
                       'Color', color, 'LineWidth', 2.2, 'MarkerSize', 8, ...
                       'MarkerFaceColor', color, 'CapSize', 12);
         handles(end+1) = he;                                         %#ok<AGROW>
-        labels(end+1)  = mat + " mean " + char(177) + " 1 SD";      %#ok<AGROW>
+        labels(end+1)  = mat + " mean";                             %#ok<AGROW>
     end
 end
 

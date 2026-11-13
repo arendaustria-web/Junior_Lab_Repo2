@@ -45,7 +45,7 @@ years = ["2023","2024","2025","2026"];
 %% AP / epoxy weight percent for each test year
 apPercentByYear = containers.Map( ...
     {'2023','2024','2025','2026'}, ...
-    {   60,     40,     50,     70});
+    {   70,     40,     50,     60});
 
 %% Fit settings
 fitSettings.stressSpan = 0.20;   % each window covers 20% of peak stress
@@ -634,7 +634,7 @@ function plotModulusVsAP(acceptedResults, summary, materials, savePath)
         errorbar(ax, s.AP_Percent + offsets(key), s.MeanModulus_MPa, ...
             s.StdModulus_MPa, '-o', 'Color',colors(key), ...
             'MarkerFaceColor',colors(key), 'LineWidth',2, 'CapSize',8, ...
-            'DisplayName', key + " mean \pm 1 SD");
+            'DisplayName', key + " mean");
     end
 
     apValues = unique(summary.AP_Percent);

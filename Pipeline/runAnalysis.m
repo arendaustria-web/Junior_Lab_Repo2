@@ -18,7 +18,7 @@
 %      private/                 helpers used by the functions above
 %
 %  Settings you edit
-%    private/apRatio.m            year -> AP loading (2024 40%, 2025 50%, 2023 60%, 2026 70%)
+%    private/apRatio.m            year -> AP loading (2024 40%, 2025 50%, 2026 60%, 2023 70%)
 %    private/excludedSpecimens.m  bad tests to leave out of every plot and average
 %
 %  Outputs
@@ -80,7 +80,7 @@ for testName = ["Tension", "Compression", "Fracture"]
     plotSpecimenBands(testName, 'ProcessedFile', processedFile);
 end
 
-%% 8) AP comparison series: every specimen, mean curve ending at the mean
+%% 8) AP comparison series: every specimen (fracture: 54), mean curve ending at the mean
 %     fracture point with a dashed line to the axis -> Figures/AP_Comparison
 plotAPComparison('ProcessedFile', processedFile);
 

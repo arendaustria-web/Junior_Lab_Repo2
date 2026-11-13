@@ -8,8 +8,8 @@ function ap = apRatio(year)
 
 map = [ 2024  40
         2025  50
-        2023  60
-        2026  70 ];
+        2026  60
+        2023  70 ];
 
 if nargin == 0
     ap = sortrows(map, 2);
